@@ -1,0 +1,20 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -e
+
+PREFIX="/data/data/com.termux/files/usr"
+
+case "$1" in
+    purge|remove)
+        [ -d "$PREFIX/share/termuxify" ] && rm -rf "$PREFIX/share/termuxify"
+        [ -L "$PREFIX/bin/termuxify" ] && rm -f "$PREFIX/bin/termuxify"
+        [ -f "$PREFIX/bin/termuxify.sh" ] && rm -f "$PREFIX/bin/termuxify.sh"
+    ;;
+    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+    ;;
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 0
+    ;;
+esac
+
+exit 0

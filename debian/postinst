@@ -1,0 +1,25 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -e
+
+PREFIX="/data/data/com.termux/files/usr"
+
+mkdir -p "$PREFIX/bin" "$PREFIX/share/termuxify"
+
+case "$1" in
+    configure)
+        if [ ! -f "$PREFIX/bin/termuxify.sh" ]; then
+            echo "Warning: termuxify.sh not found in $PREFIX/bin" >&2
+            exit 0
+        fi
+        chmod 755 "$PREFIX/bin/termuxify.sh"
+        ln -sf "$PREFIX/bin/termuxify.sh" "$PREFIX/bin/termuxify"
+    ;;
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 0
+    ;;
+esac
+
+exit 0

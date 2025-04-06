@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	mkdir -p debian/termuxify/data/data/com.termux/files/usr/bin
+	mkdir -p debian/termuxify/data/data/com.termux/files/usr/share/termuxify
+	cp termuxify.sh debian/termuxify/data/data/com.termux/files/usr/bin/
+	chmod +x debian/termuxify/data/data/com.termux/files/usr/bin/termuxify.sh
+	cp -r colors debian/termuxify/data/data/com.termux/files/usr/share/termuxify/
+	cp -r fonts debian/termuxify/data/data/com.termux/files/usr/share/termuxify/

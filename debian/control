@@ -1,0 +1,8 @@
+Package: termuxify
+Version: 0.1.0
+Architecture: all
+Maintainer: Ayan Rajpoot
+Description: Terminal customization tool for Termux
+Depends: bash
+Section: utils
+Homepage: https://github.com/Ayanrajpoot10/termuxify
