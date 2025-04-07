@@ -1,13 +1,12 @@
-#!/bin/bash
+#!/data/data/com.termux/files/usr/bin/bash
 
-readonly VERSION="0.1.0"
+readonly VERSION="0.1.1"
 readonly AUTHOR="Ayan Rajpoot"
 readonly GITHUB="https://github.com/Ayanrajpoot10/TermuXify"
 
 set -euo pipefail
 IFS=$'\n\t'
 
-readonly PREFIX='/data/data/com.termux/files/usr'
 readonly TERMUX_DIR="$HOME/.termux"
 readonly SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 readonly COLORS_DIR="$PREFIX/share/termuxify/colors"
@@ -18,24 +17,40 @@ readonly COLORS_FILE="$TERMUX_DIR/colors.properties"
 readonly CURRENT_THEME_FILE="$TERMUX_DIR/.current_theme"
 readonly CURRENT_FONT_FILE="$TERMUX_DIR/.current_font"
 
+declare -A COLOR=(
+    [reset]="\033[0m"
+    [bold]="\033[1m"
+    [dim]="\033[2m"
+    [italic]="\033[3m"
+    
+    [primary]="\033[38;5;68m"
+    [secondary]="\033[38;5;31m"
+    [accent]="\033[38;5;75m"
+    [text]="\033[38;5;252m"
+    [muted]="\033[38;5;244m"
+    
+    [success]="\033[38;5;78m"
+    [warning]="\033[38;5;221m"
+    [error]="\033[38;5;167m"
+    [info]="\033[38;5;110m"
+    
+    [header]="\033[38;5;32m"
+    [border]="\033[38;5;240m"
+    [prompt]="\033[38;5;39m"
+    [highlight]="\033[38;5;147m"
+)
+
+readonly LEFT_PADDING="   "
+
 show_message() {
     local type=$1
     local msg=$2
-    local color
-    
-    case $type in
-        success) color=$SUCCESS ;;
-        warning) color=$WARNING ;;
-        error)   color=$ERROR ;;
-        info)    color=$INFO ;;
-        header)  color=$HEADER ;;
-        prompt)  color=$PROMPT ;;
-    esac
+    local color="${COLOR[$type]}"
     
     if [[ $type == "prompt" ]]; then
-        echo -en "${LEFT_PADDING}${color}${BOLD}${msg}${RESET} "
+        echo -en "${LEFT_PADDING}${color}${COLOR[bold]}${msg}${COLOR[reset]} "
     else
-        echo -e "${LEFT_PADDING}${color}${msg}${RESET}"
+        echo -e "${LEFT_PADDING}${color}${msg}${COLOR[reset]}"
     fi
 }
 
@@ -72,50 +87,27 @@ backup_initial_properties() {
     done
 }
 
-RESET="\033[0m"
-BOLD="\033[1m"
-DIM="\033[2m"
-ITALIC="\033[3m"
-
-PRIMARY="\033[38;5;68m"
-SECONDARY="\033[38;5;31m"
-ACCENT="\033[38;5;75m"
-TEXT="\033[38;5;252m"
-MUTED="\033[38;5;244m"
-
-SUCCESS="\033[38;5;78m"
-WARNING="\033[38;5;221m"
-ERROR="\033[38;5;167m"
-INFO="\033[38;5;110m"
-
-HEADER="\033[38;5;32m"
-BORDER="\033[38;5;240m"
-PROMPT="\033[38;5;39m"
-HIGHLIGHT="\033[38;5;147m"
-
-readonly LEFT_PADDING="   "
-
 show_banner() {
     clear
     echo
-    printf "${LEFT_PADDING}${ACCENT}${BOLD}"
+    printf "${LEFT_PADDING}${COLOR[accent]}${COLOR[bold]}"
     printf "┌────────────────────────────────────┐\n"
     printf "${LEFT_PADDING}│             TermuXify              │\n"
     printf "${LEFT_PADDING}└────────────────────────────────────┘"
-    printf "${RESET}\n"
-    printf "${LEFT_PADDING}${DIM} Terminal customization tool | v${VERSION}${RESET}\n\n"
+    printf "${COLOR[reset]}\n"
+    printf "${LEFT_PADDING}${COLOR[dim]} Terminal customization tool | v${VERSION}${COLOR[reset]}\n\n"
 }
 
 show_header() {
     local msg=$1
-    echo -e "${LEFT_PADDING}${HEADER}${msg}${RESET}"
+    echo -e "${LEFT_PADDING}${COLOR[header]}${msg}${COLOR[reset]}"
 }
 
 show_bordered_header() {
     local msg=$1
-    echo -e "${LEFT_PADDING}${BORDER}┌$(printf '─%.0s' {1..35})┐"
-    echo -e "${LEFT_PADDING}${BORDER}│${HEADER}$(printf "%-35s" "  $msg")${BORDER}│"
-    echo -e "${LEFT_PADDING}${BORDER}└$(printf '─%.0s' {1..35})┘${RESET}"
+    echo -e "${LEFT_PADDING}${COLOR[border]}┌$(printf '─%.0s' {1..35})┐"
+    echo -e "${LEFT_PADDING}${COLOR[border]}│${COLOR[header]}$(printf "%-35s" "  $msg")${COLOR[border]}│"
+    echo -e "${LEFT_PADDING}${COLOR[border]}└$(printf '─%.0s' {1..35})┘${COLOR[reset]}"
 }
 
 update_property() {
@@ -182,7 +174,6 @@ load_custom_theme() {
         return 1
     fi
     
-    # Validate theme file format
     if ! grep -q "^color[0-9]\+=#[0-9A-Fa-f]\{6\}$\|^background=#[0-9A-Fa-f]\{6\}$\|^foreground=#[0-9A-Fa-f]\{6\}$" "$source"; then
         show_error "Invalid theme file format!"
         return 1
@@ -194,32 +185,39 @@ load_custom_theme() {
     return 0
 }
 
+display_selectable_items() {
+    local current="$1"
+    local items=("${@:2}")
+    
+    # Display default option
+    if [[ "default" == "${current%.*}" ]]; then
+        echo -e "${LEFT_PADDING}${COLOR[highlight]}[D] Default ${COLOR[success]}← USED${COLOR[reset]}"
+    else
+        echo -e "${LEFT_PADDING}${COLOR[text]}[D] Default${COLOR[reset]}"
+    fi
+    
+    # Display array items
+    local count=0
+    for item in "${items[@]}"; do
+        local name=$(basename "${item%.*}")
+        if [[ "$name" == "${current%.*}" ]]; then
+            echo -e "${LEFT_PADDING}${COLOR[highlight]}[${count}] ${name} ${COLOR[success]}← USED${COLOR[reset]}"
+        else
+            echo -e "${LEFT_PADDING}${COLOR[text]}[${count}] ${name}${COLOR[reset]}"
+        fi
+        count=$((count+1))
+    done
+}
+
 configure_font_style() {
     clear
     show_bordered_header "Font Configuration"
     
     local current_font=$(get_current_font)
-    
-    if [[ "default" == "${current_font%.*}" ]]; then
-        echo -e "${LEFT_PADDING}${HIGHLIGHT}[D] Default ${SUCCESS}← USED${RESET}"
-    else
-        echo -e "${LEFT_PADDING}${TEXT}[D] Default${RESET}"
-    fi
-    
-    local count=0
     local fonts=($FONTS_DIR/*)
     
-    for font in "${fonts[@]}"; do
-        local font_name=$(basename "${font%.*}")
-        if [[ "$font_name" == "${current_font%.*}" ]]; then
-            echo -e "${LEFT_PADDING}${HIGHLIGHT}[${count}] ${font_name} ${SUCCESS}← USED${RESET}"
-        else
-            echo -e "${LEFT_PADDING}${TEXT}[${count}] ${font_name}${RESET}"
-        fi
-        count=$((count+1))
-    done
-    
-    echo -e "${LEFT_PADDING}${SECONDARY}[L] Load font${RESET}"
+    display_selectable_items "$current_font" "${fonts[@]}"
+    echo -e "${LEFT_PADDING}${COLOR[secondary]}[L] Load font${COLOR[reset]}"
     
     show_prompt "Select option:"
     read choice
@@ -231,7 +229,7 @@ configure_font_style() {
             ;;
         [Ll])
             if load_custom_font; then
-                configure_font_style  # Refresh the menu to show newly loaded font
+                configure_font_style
                 return
             fi
             ;;
@@ -260,29 +258,12 @@ change_colors() {
     show_bordered_header "Color Theme Configuration"
     
     local current_theme=$(get_current_theme)
-    
-    if [[ "default" == "${current_theme%.*}" ]]; then
-        echo -e "${LEFT_PADDING}${HIGHLIGHT}[D] Default ${SUCCESS}← USED${RESET}"
-    else
-        echo -e "${LEFT_PADDING}${TEXT}[D] Default${RESET}"
-    fi
-    
-    local count=0
     local schemes=($COLORS_DIR/*)
     
-    for scheme in "${schemes[@]}"; do
-        local scheme_name=$(basename "${scheme%.*}")
-        if [[ "$scheme_name" == "${current_theme%.*}" ]]; then
-            echo -e "${LEFT_PADDING}${HIGHLIGHT}[${count}] ${scheme_name} ${SUCCESS}← USED${RESET}"
-        else
-            echo -e "${LEFT_PADDING}${TEXT}[${count}] ${scheme_name}${RESET}"
-        fi
-        count=$((count+1))
-    done
-    
-    echo -e "${LEFT_PADDING}${SECONDARY}[R] Random theme${RESET}"
-    echo -e "${LEFT_PADDING}${SECONDARY}[L] Load theme${RESET}"
-    echo -e "${LEFT_PADDING}${SECONDARY}[C] Create custom theme${RESET}"
+    display_selectable_items "$current_theme" "${schemes[@]}"
+    echo -e "${LEFT_PADDING}${COLOR[secondary]}[R] Random theme${COLOR[reset]}"
+    echo -e "${LEFT_PADDING}${COLOR[secondary]}[L] Load theme${COLOR[reset]}"
+    echo -e "${LEFT_PADDING}${COLOR[secondary]}[C] Create custom theme${COLOR[reset]}"
     
     show_prompt "Select option:"
     read choice
@@ -299,7 +280,7 @@ change_colors() {
             ;;
         [Ll])
             if load_custom_theme; then
-                change_colors  # Refresh the menu to show newly loaded theme
+                change_colors
                 return
             fi
             ;;
@@ -386,13 +367,13 @@ change_cursor() {
         local style="${3:-}"
         local extra_info="${4:-}"
         
-        local format="${LEFT_PADDING}${TEXT}"
-        [[ "$style" == "$current_style" ]] && format="${LEFT_PADDING}${HIGHLIGHT}"
+        local format="${LEFT_PADDING}${COLOR[text]}"
+        [[ "$style" == "$current_style" ]] && format="${LEFT_PADDING}${COLOR[highlight]}"
         
         echo -en "$format$num. $name"
-        [[ "$style" == "$current_style" ]] && echo -en " ${SUCCESS}← USED"
-        [[ -n "$extra_info" ]] && echo -en " ${SUCCESS}$extra_info"
-        echo -e "${RESET}"
+        [[ "$style" == "$current_style" ]] && echo -en " ${COLOR[success]}← USED"
+        [[ -n "$extra_info" ]] && echo -en " ${COLOR[success]}$extra_info"
+        echo -e "${COLOR[reset]}"
     }
     
     format_option "1" "Block" "block"
@@ -532,72 +513,7 @@ configure_motd() {
     esac
 }
 
-show_help() {
-    cat << EOF
-${LEFT_PADDING}${HEADER}TermuXify Help Guide${RESET}
-${LEFT_PADDING}A simple tool to customize your Termux terminal
-
-${LEFT_PADDING}${PRIMARY}Usage:${RESET}
-${LEFT_PADDING}  termuxify           Start the interactive menu
-${LEFT_PADDING}  termuxify -h        Show this help message
-${LEFT_PADDING}  termuxify --help    Show this help message
-
-${LEFT_PADDING}${PRIMARY}Features:${RESET}
-
-${LEFT_PADDING}${SECONDARY}1. Font Style${RESET}
-${LEFT_PADDING}   - Change terminal fonts
-${LEFT_PADDING}   - Load custom TTF fonts
-${LEFT_PADDING}   - Reset to default font
-${LEFT_PADDING}   Example: Select option 1 and choose from available fonts
-
-${LEFT_PADDING}${SECONDARY}2. Color Theme${RESET}
-${LEFT_PADDING}   - Change terminal colors
-${LEFT_PADDING}   - Create custom color schemes
-${LEFT_PADDING}   - Load existing themes
-${LEFT_PADDING}   - Generate random themes
-${LEFT_PADDING}   Example: Select option 2 and try "Random theme" to explore
-
-${LEFT_PADDING}${SECONDARY}3. Cursor Style${RESET}
-${LEFT_PADDING}   - Change cursor shape (block, underline, bar)
-${LEFT_PADDING}   - Configure cursor blinking
-${LEFT_PADDING}   Example: Select option 3 and try different cursor styles
-
-${LEFT_PADDING}${SECONDARY}4. MOTD (Message of the Day)${RESET}
-${LEFT_PADDING}   - Enable/disable welcome message
-${LEFT_PADDING}   - Set custom welcome message
-${LEFT_PADDING}   Example: Select option 4 and set your own welcome message
-
-${LEFT_PADDING}${SECONDARY}5. Aliases${RESET}
-${LEFT_PADDING}   - Create command shortcuts
-${LEFT_PADDING}   - List existing aliases
-${LEFT_PADDING}   - Remove aliases
-${LEFT_PADDING}   Example: Select option 5 and create alias 'cls' for 'clear'
-
-${LEFT_PADDING}${PRIMARY}Tips:${RESET}
-${LEFT_PADDING}- Press Ctrl+C anytime to exit
-${LEFT_PADDING}- Restart Termux after changes for best results
-
-${LEFT_PADDING}${PRIMARY}Need more help?${RESET}
-${LEFT_PADDING}Visit: ${GITHUB}
-EOF
-}
-
 main() {
-    # Add help flag handling
-    if [[ $# -gt 0 ]]; then
-        case "$1" in
-            -h|--help)
-                show_banner
-                show_help
-                exit 0
-                ;;
-            *)
-                show_error "Unknown option: $1"
-                show_info "Use -h or --help for usage information"
-                exit 1
-                ;;
-        esac
-    fi
 
     init_directories
     backup_initial_properties
@@ -608,9 +524,9 @@ main() {
         current_theme=$(get_current_theme)
         current_font=$(get_current_font)
         
-        echo -e "${LEFT_PADDING}${PRIMARY}Current Configuration${RESET}"
-        echo -e "${LEFT_PADDING}${TEXT}Theme: ${HIGHLIGHT}${current_theme%.*}${RESET}"
-        echo -e "${LEFT_PADDING}${TEXT}Font:  ${HIGHLIGHT}${current_font%.*}${RESET}\n"
+        echo -e "${LEFT_PADDING}${COLOR[primary]}Current Configuration${COLOR[reset]}"
+        echo -e "${LEFT_PADDING}${COLOR[text]}Theme: ${COLOR[highlight]}${current_theme%.*}${COLOR[reset]}"
+        echo -e "${LEFT_PADDING}${COLOR[text]}Font:  ${COLOR[highlight]}${current_font%.*}${COLOR[reset]}\n"
 
         show_header "APPEARANCE"
         show_info "1. Font Style"

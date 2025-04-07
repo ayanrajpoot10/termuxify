@@ -1,20 +1,15 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
 
-PREFIX="/data/data/com.termux/files/usr"
+BIN="$PREFIX/bin"
+SHARE="$PREFIX/share/termuxify"
 
-case "$1" in
-    purge|remove)
-        [ -d "$PREFIX/share/termuxify" ] && rm -rf "$PREFIX/share/termuxify"
-        [ -L "$PREFIX/bin/termuxify" ] && rm -f "$PREFIX/bin/termuxify"
-        [ -f "$PREFIX/bin/termuxify.sh" ] && rm -f "$PREFIX/bin/termuxify.sh"
-    ;;
-    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
-    ;;
-    *)
-        echo "postrm called with unknown argument \`$1'" >&2
-        exit 0
-    ;;
-esac
+if [ "$1" = "purge" ] || [ "$1" = "remove" ]; then
+    [ -d "$SHARE" ] && rm -rf "$SHARE"
+    [ -L "$BIN/termuxify" ] && rm -f "$BIN/termuxify"
+    [ -f "$BIN/termuxify.sh" ] && rm -f "$BIN/termuxify.sh"
+elif [[ "$1" != "upgrade" && "$1" != "failed-upgrade" && "$1" != "abort-install" && "$1" != "abort-upgrade" && "$1" != "disappear" ]]; then
+    echo "postrm called with unknown argument \`$1'" >&2
+fi
 
 exit 0

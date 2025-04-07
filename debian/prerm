@@ -1,20 +1,13 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
 
-PREFIX="/data/data/com.termux/files/usr"
+BIN="$PREFIX/bin"
 
-
-case "$1" in
-    remove|upgrade|deconfigure)
-        [ -L "$PREFIX/bin/termuxify" ] && rm -f "$PREFIX/bin/termuxify"
-        [ -f "$PREFIX/bin/termuxify.sh" ] && rm -f "$PREFIX/bin/termuxify.sh"
-    ;;
-    failed-upgrade)
-    ;;
-    *)
-        echo "prerm called with unknown argument \`$1'" >&2
-        exit 0
-    ;;
-esac
+if [[ "$1" == "remove" || "$1" == "upgrade" || "$1" == "deconfigure" ]]; then
+    [ -L "$BIN/termuxify" ] && rm -f "$BIN/termuxify"
+    [ -f "$BIN/termuxify.sh" ] && rm -f "$BIN/termuxify.sh"
+elif [[ "$1" != "failed-upgrade" ]]; then
+    echo "prerm called with unknown argument \`$1'" >&2
+fi
 
 exit 0

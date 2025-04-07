@@ -1,49 +1,31 @@
-#!/bin/bash
+#!/data/data/com.termux/files/usr/bin/bash
+set -e
 
-VERSION="0.1.0"
+VERSION="0.1.1"
 PKGNAME="termuxify"
+DEB_DIR="debian/${PKGNAME}"
+USR_DIR="${DEB_DIR}/data/data/com.termux/files/usr"
+BIN_DIR="${USR_DIR}/bin"
+SHARE_DIR="${USR_DIR}/share/${PKGNAME}"
 
-rm -rf "debian/${PKGNAME}"
-rm -f "${PKGNAME}_${VERSION}.deb"
+rm -rf "$DEB_DIR" "${PKGNAME}_${VERSION}.deb"
 
-mkdir -p "debian/${PKGNAME}/DEBIAN"
-mkdir -p "debian/${PKGNAME}/data/data/com.termux/files/usr/bin"
-mkdir -p "debian/${PKGNAME}/data/data/com.termux/files/usr/share/termuxify/colors"
-mkdir -p "debian/${PKGNAME}/data/data/com.termux/files/usr/share/termuxify/fonts"
+mkdir -p "$DEB_DIR/DEBIAN" "$BIN_DIR" "$SHARE_DIR/colors" "$SHARE_DIR/fonts"
 
-for file in control postinst prerm postrm; do
-    if [ ! -f "debian/$file" ]; then
-        echo "Error: debian/$file not found"
-        exit 1
-    fi
-    sed -i 's/\r$//' "debian/$file"
-    cp "debian/$file" "debian/${PKGNAME}/DEBIAN/"
+for script in control postinst prerm postrm; do
+    [[ -f "debian/$script" ]] || { echo "Error: debian/$script not found"; exit 1; }
+    sed -i 's/\r$//' "debian/$script"
+    install -m $([ "$script" = "control" ] && echo "644" || echo "755") "debian/$script" "$DEB_DIR/DEBIAN/$script"
 done
 
-chmod 755 "debian/${PKGNAME}/DEBIAN/postinst"
-chmod 755 "debian/${PKGNAME}/DEBIAN/prerm"
-chmod 755 "debian/${PKGNAME}/DEBIAN/postrm"
-chmod 644 "debian/${PKGNAME}/DEBIAN/control"
+install -m755 termuxify.sh "$BIN_DIR/termuxify.sh"
+cp -a colors/. "$SHARE_DIR/colors/"
+cp -a fonts/. "$SHARE_DIR/fonts/"
 
-cp termuxify.sh "debian/${PKGNAME}/data/data/com.termux/files/usr/bin/"
-chmod 755 "debian/${PKGNAME}/data/data/com.termux/files/usr/bin/termuxify.sh"
+chmod 755 "$DEB_DIR"/DEBIAN/post* "$DEB_DIR"/DEBIAN/pre* 2>/dev/null || true
 
-cp -r colors/* "debian/${PKGNAME}/data/data/com.termux/files/usr/share/termuxify/colors/"
-cp -r fonts/* "debian/${PKGNAME}/data/data/com.termux/files/usr/share/termuxify/fonts/"
+chmod 755 "$DEB_DIR/DEBIAN"
 
-chmod -R 644 "debian/${PKGNAME}/data/data/com.termux/files/usr/share/termuxify/colors/"*
-chmod -R 644 "debian/${PKGNAME}/data/data/com.termux/files/usr/share/termuxify/fonts/"*
+dpkg-deb -Zxz --build "$DEB_DIR" "${PKGNAME}_${VERSION}.deb"
 
-find "debian/${PKGNAME}" -type d -exec chmod 755 {} \;
-find "debian/${PKGNAME}" -type f -exec chmod 644 {} \;
-find "debian/${PKGNAME}/DEBIAN" -type f -name "post*" -exec chmod 755 {} \;
-find "debian/${PKGNAME}/DEBIAN" -type f -name "pre*" -exec chmod 755 {} \;
-
-INSTALLED_SIZE=$(du -sk "debian/${PKGNAME}" | cut -f1)
-
-sed -i "/^Section:/a\Installed-Size: ${INSTALLED_SIZE}" "debian/${PKGNAME}/DEBIAN/control"
-
-dpkg-deb --build "debian/${PKGNAME}" "${PKGNAME}_${VERSION}.deb"
-
-echo "Package built successfully: ${PKGNAME}_${VERSION}.deb"
-echo "Installed Size: ${INSTALLED_SIZE} KB"
+echo "Package built: ${PKGNAME}_${VERSION}.deb"
