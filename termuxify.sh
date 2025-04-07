@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-readonly VERSION="0.1.4"
+readonly VERSION="0.1.5"
 readonly AUTHOR="Ayan Rajpoot"
 readonly GITHUB="https://github.com/Ayanrajpoot10/TermuXify"
 
