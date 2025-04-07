@@ -1,5 +1,5 @@
 Package: termuxify
-Version: 0.1.5
+Version: 0.1.6
 Architecture: all
 Maintainer: Ayan Rajpoot
 Description: Terminal customization tool for Termux
