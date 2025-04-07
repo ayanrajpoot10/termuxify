@@ -1,7 +1,13 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
 
-VERSION="0.1.5"
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <version>"
+    echo "Example: $0 0.1.5"
+    exit 1
+fi
+
+VERSION="$1"
 PKGNAME="termuxify"
 DEB_DIR="debian/${PKGNAME}"
 USR_DIR="${DEB_DIR}/data/data/com.termux/files/usr"
