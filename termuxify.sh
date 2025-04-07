@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-readonly VERSION="0.1.6"
+readonly VERSION="0.2.0"
 readonly AUTHOR="Ayan Rajpoot"
 readonly GITHUB="https://github.com/Ayanrajpoot10/TermuXify"
 

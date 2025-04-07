@@ -4,7 +4,6 @@ set -e
 
 if [ $# -ne 1 ]; then
     echo "Usage: $0 <version>"
-    echo "Example: $0 0.1.5"
     exit 1
 fi
 
