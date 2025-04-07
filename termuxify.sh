@@ -1,4 +1,4 @@
-#!/data/data/com.termux/files/usr/bin/bash
+#!/usr/bin/env bash
 
 readonly VERSION="0.1.6"
 readonly AUTHOR="Ayan Rajpoot"
