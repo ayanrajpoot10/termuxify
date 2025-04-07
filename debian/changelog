@@ -1,0 +1,16 @@
+termuxify (0.1.1) stable; urgency=medium
+
+  * New version release
+  * Package structure improvements
+  * Debian packaging support added
+
+ -- Ayan Rajpoot <Ayanrajpoot2004@gmail.com>  Mon, 07 Apr 2025 15:30:00 +0530
+
+termuxify (1.0.0) stable; urgency=medium
+
+  * Initial release
+  * Added terminal customization features
+  * Included multiple color schemes
+  * Added various Nerd Fonts
+
+ -- Ayan Rajpoot <Ayanrajpoot2004@gmail.com>  Sun, 06 Apr 2025 12:00:00 +0530
