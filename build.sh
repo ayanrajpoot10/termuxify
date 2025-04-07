@@ -33,6 +33,10 @@ chmod 755 "$DEB_DIR"/DEBIAN/post* "$DEB_DIR"/DEBIAN/pre* 2>/dev/null || true
 
 chmod 755 "$DEB_DIR/DEBIAN"
 
+INSTALLED_SIZE=$(du -sk "$DEB_DIR/data" | cut -f1)
+
+sed -i "s/^Version:.*/&\nInstalled-Size: $INSTALLED_SIZE/" "$DEB_DIR/DEBIAN/control"
+
 dpkg-deb -Zxz --build "$DEB_DIR" "${PKGNAME}_${VERSION}.deb"
 
 echo "Package built: ${PKGNAME}_${VERSION}.deb"
