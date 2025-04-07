@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -e
 
-VERSION="0.1.1"
+VERSION="0.1.4"
 PKGNAME="termuxify"
 DEB_DIR="debian/${PKGNAME}"
 USR_DIR="${DEB_DIR}/data/data/com.termux/files/usr"
