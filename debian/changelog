@@ -1,4 +1,4 @@
-termuxify (0.1.1) stable; urgency=medium
+termuxify (0.2.0) stable; urgency=medium
 
   * New version release
   * Package structure improvements
@@ -6,7 +6,7 @@ termuxify (0.1.1) stable; urgency=medium
 
  -- Ayan Rajpoot <Ayanrajpoot2004@gmail.com>  Mon, 07 Apr 2025 15:30:00 +0530
 
-termuxify (1.0.0) stable; urgency=medium
+termuxify (0.1.0) stable; urgency=medium
 
   * Initial release
   * Added terminal customization features
