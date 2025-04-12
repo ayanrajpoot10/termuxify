@@ -8,12 +8,11 @@ set -euo pipefail
 IFS=$'\n\t'
 
 readonly TERMUX_DIR="$HOME/.termux"
-readonly SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 readonly COLORS_DIR="$PREFIX/share/termuxify/colors"
 readonly FONTS_DIR="$PREFIX/share/termuxify/fonts"
 
 readonly TERMUX_PROPERTIES="$TERMUX_DIR/termux.properties"
-readonly COLORS_FILE="$TERMUX_DIR/colors.properties"
+readonly COLORS_PROPERTIES="$TERMUX_DIR/colors.properties"
 readonly CURRENT_THEME_FILE="$TERMUX_DIR/.current_theme"
 readonly CURRENT_FONT_FILE="$TERMUX_DIR/.current_font"
 
@@ -79,7 +78,7 @@ init_directories() {
 }
 
 backup_initial_properties() {
-    local files=("$TERMUX_PROPERTIES" "$COLORS_FILE")
+    local files=("$TERMUX_PROPERTIES" "$COLORS_PROPERTIES")
     for file in "${files[@]}"; do
         if [ -f "$file" ] && [ ! -f "${file}.backup" ]; then
             cp "$file" "${file}.backup"
@@ -270,12 +269,12 @@ change_colors() {
     
     case $choice in
         [Dd])
-            rm -f "$COLORS_FILE"
+            rm -f "$COLORS_PROPERTIES"
             echo "default" > "$TERMUX_DIR/.current_color"
             ;;
         [Rr])
             random_scheme=$(ls $COLORS_DIR | shuf -n 1)
-            cp "$COLORS_DIR/$random_scheme" "$COLORS_FILE"
+            cp "$COLORS_DIR/$random_scheme" "$COLORS_PROPERTIES"
             echo "$random_scheme" > "$TERMUX_DIR/.current_color"
             ;;
         [Ll])
@@ -291,7 +290,7 @@ change_colors() {
         [0-9]*)
             if [ "$choice" -lt "${#schemes[@]}" ]; then
                 scheme=${schemes[$choice]}
-                cp "$scheme" "$COLORS_FILE"
+                cp "$scheme" "$COLORS_PROPERTIES"
                 echo "$(basename "$scheme")" > "$TERMUX_DIR/.current_color"
             else
                 show_error "Invalid selection"
@@ -347,7 +346,7 @@ create_custom_theme() {
     show_prompt "Apply this theme now? (y/N):"
     read apply
     if [ "$apply" = "y" ] || [ "$apply" = "Y" ]; then
-        cp "$theme_file" "$COLORS_FILE"
+        cp "$theme_file" "$COLORS_PROPERTIES"
         echo "${theme_name}.properties" > "$TERMUX_DIR/.current_color"
         termux-reload-settings
         show_success "Theme applied"
