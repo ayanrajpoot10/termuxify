@@ -124,16 +124,16 @@ update_property() {
 }
 
 get_current_theme() {
-    if [ -f "$TERMUX_DIR/.current_color" ]; then
-        cat "$TERMUX_DIR/.current_color"
+    if [ -f "$CURRENT_THEME_FILE" ]; then
+        cat "$CURRENT_THEME_FILE"
     else
         echo "default"
     fi
 }
 
 get_current_font() {
-    if [ -f "$TERMUX_DIR/.current_font" ]; then
-        cat "$TERMUX_DIR/.current_font"
+    if [ -f "$CURRENT_FONT_FILE" ]; then
+        cat "$CURRENT_FONT_FILE"
     else
         echo "default"
     fi
@@ -224,7 +224,7 @@ configure_font_style() {
     case $choice in
         [Dd])
             rm -f "$TERMUX_DIR/font.ttf"
-            echo "default" > "$TERMUX_DIR/.current_font"
+            echo "default" > "$CURRENT_FONT_FILE"
             ;;
         [Ll])
             if load_custom_font; then
@@ -236,7 +236,7 @@ configure_font_style() {
             if [ "$choice" -lt "${#fonts[@]}" ]; then
                 font=${fonts[$choice]}
                 cp "$font" "$TERMUX_DIR/font.ttf"
-                echo "$(basename "$font")" > "$TERMUX_DIR/.current_font"
+                echo "$(basename "$font")" > "$CURRENT_FONT_FILE"
             else
                 show_error "Invalid selection"
                 return
@@ -270,12 +270,12 @@ change_colors() {
     case $choice in
         [Dd])
             rm -f "$COLORS_PROPERTIES"
-            echo "default" > "$TERMUX_DIR/.current_color"
+            echo "default" > "$CURRENT_THEME_FILE"
             ;;
         [Rr])
             random_scheme=$(ls $COLORS_DIR | shuf -n 1)
             cp "$COLORS_DIR/$random_scheme" "$COLORS_PROPERTIES"
-            echo "$random_scheme" > "$TERMUX_DIR/.current_color"
+            echo "$random_scheme" > "$CURRENT_THEME_FILE"
             ;;
         [Ll])
             if load_custom_theme; then
@@ -291,7 +291,7 @@ change_colors() {
             if [ "$choice" -lt "${#schemes[@]}" ]; then
                 scheme=${schemes[$choice]}
                 cp "$scheme" "$COLORS_PROPERTIES"
-                echo "$(basename "$scheme")" > "$TERMUX_DIR/.current_color"
+                echo "$(basename "$scheme")" > "$CURRENT_THEME_FILE"
             else
                 show_error "Invalid selection"
                 return
@@ -347,7 +347,7 @@ create_custom_theme() {
     read apply
     if [ "$apply" = "y" ] || [ "$apply" = "Y" ]; then
         cp "$theme_file" "$COLORS_PROPERTIES"
-        echo "${theme_name}.properties" > "$TERMUX_DIR/.current_color"
+        echo "${theme_name}.properties" > "$CURRENT_THEME_FILE"
         termux-reload-settings
         show_success "Theme applied"
     fi
