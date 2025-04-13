@@ -529,10 +529,10 @@ main() {
         show_info "1. Font Style"
         show_info "2. Color Theme"
         show_info "3. Cursor Style"
-        
+        echo
         show_header "CONFIGURATION"
         show_info "4. MOTD"
-        
+        echo
         show_header "MANAGEMENT"
         show_info "5. Aliases"
         show_info "6. Exit"
