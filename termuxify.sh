@@ -188,14 +188,12 @@ display_selectable_items() {
     local current="$1"
     local items=("${@:2}")
     
-    # Display default option
     if [[ "default" == "${current%.*}" ]]; then
         echo -e "${LEFT_PADDING}${COLOR[highlight]}[D] Default ${COLOR[success]}← USED${COLOR[reset]}"
     else
         echo -e "${LEFT_PADDING}${COLOR[text]}[D] Default${COLOR[reset]}"
     fi
     
-    # Display array items
     local count=0
     for item in "${items[@]}"; do
         local name=$(basename "${item%.*}")
