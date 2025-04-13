@@ -142,13 +142,18 @@ get_current_font() {
 }
 
 get_shell_rc() {
-    if [ -n "${ZSH_VERSION:-}" ]; then
-        echo "$HOME/.zshrc"
-    elif [ -n "${BASH_VERSION:-}" ]; then
-        echo "$HOME/.bashrc"
-    else
-        echo ""
-    fi
+    local shell_path=$(echo $SHELL)
+    case "$shell_path" in
+        *zsh)
+            echo "$HOME/.zshrc"
+            ;;
+        *bash)
+            echo "$HOME/.bashrc"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
 }
 
 load_custom_font() {
@@ -424,7 +429,7 @@ change_cursor() {
     
     termux-reload-settings
     show_success "Cursor settings updated"
-    show_warning "Please restart Termux for cursor changes to take full effect"
+    show_warning "Restart Termux for changes to take effect"
 }
 
 manage_aliases() {
@@ -433,6 +438,11 @@ manage_aliases() {
     if [ -z "$RC_FILE" ]; then
         show_error "Unsupported shell! Only bash and zsh are supported."
         return
+    fi
+
+    if [ ! -f "$RC_FILE" ]; then
+        touch "$RC_FILE"
+        show_warning "Created new $RC_FILE file"
     fi
 
     show_bordered_header "Alias Management"
@@ -449,23 +459,32 @@ manage_aliases() {
             show_prompt "Enter command:"
             read alias_command
             
-            if grep -q "^alias $alias_name=" "$RC_FILE"; then
+            if grep -q "^alias $alias_name=" "$RC_FILE" 2>/dev/null; then
                 sed -i "/^alias $alias_name=/c\alias $alias_name='$alias_command'" "$RC_FILE"
-                show_success "Alias updated! Please restart your shell"
+                source "$RC_FILE" 2>/dev/null || . "$RC_FILE"
+                show_success "Alias updated and applied!"
             else
                 echo "alias $alias_name='$alias_command'" >> "$RC_FILE"
-                show_success "Alias added! Please restart your shell"
+                source "$RC_FILE" 2>/dev/null || . "$RC_FILE"
+                show_success "Alias added and applied!"
             fi
             ;;
         2)
             show_bordered_header "Existing aliases"
-            grep "^alias" "$RC_FILE" 2>/dev/null || show_info "No aliases found"
+            if ! grep "^alias" "$RC_FILE" 2>/dev/null; then
+                show_info "No aliases found"
+            fi
             ;;
         3)
             show_prompt "Enter alias name to remove:"
             read alias_name
-            sed -i "/^alias $alias_name=/d" "$RC_FILE"
-            show_success "Alias removed! Please restart your shell or run 'source $RC_FILE'"
+            if grep -q "^alias $alias_name=" "$RC_FILE" 2>/dev/null; then
+                sed -i "/^alias $alias_name=/d" "$RC_FILE"
+                source "$RC_FILE" 2>/dev/null || . "$RC_FILE"
+                show_success "Alias removed and applied!"
+            else
+                show_warning "Alias not found"
+            fi
             ;;
         *)
             show_error "Invalid option"
