@@ -104,8 +104,10 @@ show_header() {
 
 show_bordered_header() {
     local msg=$1
+    local width=35
+    local padding=$(( (width - ${#msg}) / 2 ))
     echo -e "${LEFT_PADDING}${COLOR[border]}┌$(printf '─%.0s' {1..35})┐"
-    echo -e "${LEFT_PADDING}${COLOR[border]}│${COLOR[header]}$(printf "%-35s" "  $msg")${COLOR[border]}│"
+    echo -e "${LEFT_PADDING}${COLOR[border]}│${COLOR[header]}$(printf "%*s%s%*s" $padding "" "$msg" $((width - padding - ${#msg})) "")${COLOR[border]}│"
     echo -e "${LEFT_PADDING}${COLOR[border]}└$(printf '─%.0s' {1..35})┘${COLOR[reset]}"
 }
 
