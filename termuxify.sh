@@ -15,6 +15,7 @@ readonly TERMUX_PROPERTIES="$TERMUX_DIR/termux.properties"
 readonly COLORS_PROPERTIES="$TERMUX_DIR/colors.properties"
 readonly CURRENT_THEME_FILE="$TERMUX_DIR/.current_theme"
 readonly CURRENT_FONT_FILE="$TERMUX_DIR/.current_font"
+readonly MOTD_FILE="$PREFIX/etc/motd"
 
 declare -A COLOR=(
     [reset]="\033[0m"
@@ -488,7 +489,6 @@ manage_aliases() {
 }
 
 get_motd_status() {
-    local MOTD_FILE="$PREFIX/etc/motd"
     if [ ! -f "$MOTD_FILE" ]; then
         echo "disabled"
     elif [ -f "$MOTD_FILE.bak" ]; then
@@ -500,7 +500,6 @@ get_motd_status() {
 
 configure_motd() {
     clear
-    MOTD_FILE="$PREFIX/etc/motd"
     local current_status=$(get_motd_status)
     show_bordered_header "MOTD Configuration"
     
@@ -543,7 +542,6 @@ configure_motd() {
             fi
             ;;
         3)
-            # Backup default MOTD if not already backed up
             if [ -f "$MOTD_FILE" ] && [ ! -f "$MOTD_FILE.bak" ]; then
                 cp "$MOTD_FILE" "$MOTD_FILE.bak"
             fi
