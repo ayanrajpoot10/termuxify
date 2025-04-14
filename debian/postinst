@@ -6,7 +6,7 @@ BIN="$PREFIX/bin"
 SCRIPT="$BIN/termuxify.sh"
 LINK="$BIN/termuxify"
 
-mkdir -p "$BIN" "$PREFIX/share/termuxify"
+mkdir -p "$BIN"
 
 if [ "$1" = "configure" ] && [ -f "$SCRIPT" ]; then
     chmod 755 "$SCRIPT"

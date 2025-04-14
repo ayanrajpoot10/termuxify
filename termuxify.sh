@@ -72,11 +72,6 @@ handle_error() {
     show_error "An error occurred during execution at line $line_no"
 }
 
-init_directories() {
-    mkdir -p "$TERMUX_DIR" "$COLORS_DIR" "$FONTS_DIR" 2>/dev/null || \
-    show_warning "Failed to create one or more directories"
-}
-
 backup_initial_properties() {
     local files=("$TERMUX_PROPERTIES" "$COLORS_PROPERTIES")
     for file in "${files[@]}"; do
@@ -387,7 +382,7 @@ change_cursor() {
     
     show_prompt "Select cursor style [1-4]:"
     read choice
-
+    
     case $choice in
         1) update_property "$TERMUX_PROPERTIES" "terminal-cursor-style" "block" ;;
         2) update_property "$TERMUX_PROPERTIES" "terminal-cursor-style" "underline" ;;
@@ -406,20 +401,20 @@ change_cursor() {
                     if [[ "$blink_rate" =~ ^[0-9]+$ ]]; then
                         update_property "$TERMUX_PROPERTIES" "terminal-cursor-blink-rate" "$blink_rate"
                         show_success "Cursor blink rate set to $blink_rate ms"
-                    else
+            else
                         show_error "Invalid blink rate"
-                        return
-                    fi
-                    ;;
+                return
+            fi
+            ;;
                 2)
-                    update_property "$TERMUX_PROPERTIES" "terminal-cursor-blink-rate" "0"
-                    show_success "Cursor blinking disabled"
-                    ;;
-                *)
-                    show_error "Invalid option"
-                    return
-                    ;;
-            esac
+            update_property "$TERMUX_PROPERTIES" "terminal-cursor-blink-rate" "0"
+            show_success "Cursor blinking disabled"
+            ;;
+        *)
+            show_error "Invalid option"
+            return
+            ;;
+    esac
             ;;
         *)
             show_error "Invalid option"
