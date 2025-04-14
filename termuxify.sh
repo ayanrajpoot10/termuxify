@@ -487,16 +487,44 @@ manage_aliases() {
     esac
 }
 
+get_motd_status() {
+    local MOTD_FILE="$PREFIX/etc/motd"
+    if [ ! -f "$MOTD_FILE" ]; then
+        echo "disabled"
+    elif [ -f "$MOTD_FILE.bak" ]; then
+        echo "custom"
+    else
+        echo "default"
+    fi
+}
+
 configure_motd() {
     clear
     MOTD_FILE="$PREFIX/etc/motd"
+    local current_status=$(get_motd_status)
     show_bordered_header "MOTD Configuration"
-    show_info "1. Disable MOTD"
-    show_info "2. Enable default MOTD"
-    show_info "3. Set custom MOTD"
+    
+    format_option() {
+        local num="$1"
+        local name="$2"
+        local status="$3"
+        local current="$4"
+        
+        local format="${LEFT_PADDING}${COLOR[text]}"
+        [[ "$status" == "$current" ]] && format="${LEFT_PADDING}${COLOR[highlight]}"
+        
+        echo -en "$format$num. $name"
+        [[ "$status" == "$current" ]] && echo -en " ${COLOR[success]}← USED"
+        echo -e "${COLOR[reset]}"
+    }
+    
+    format_option "1" "Disable MOTD" "disabled" "$current_status"
+    format_option "2" "Enable default MOTD" "default" "$current_status"
+    format_option "3" "Set custom MOTD" "custom" "$current_status"
+    
     show_prompt "Select option [1-3]:"
     read choice
-
+    
     case $choice in
         1)
             if [ -f "$MOTD_FILE" ]; then
@@ -507,7 +535,7 @@ configure_motd() {
             fi
             ;;
         2)
-            if [ -f "$MOTD_FILE.bak" ]; then
+            if [ -f "$MOTD_FILE.bak" ] && [ "$(readlink -f "$MOTD_FILE.bak")" != "$(readlink -f "$MOTD_FILE")" ]; then
                 mv "$MOTD_FILE.bak" "$MOTD_FILE"
                 show_success "Default MOTD restored"
             else
@@ -515,6 +543,10 @@ configure_motd() {
             fi
             ;;
         3)
+            # Backup default MOTD if not already backed up
+            if [ -f "$MOTD_FILE" ] && [ ! -f "$MOTD_FILE.bak" ]; then
+                cp "$MOTD_FILE" "$MOTD_FILE.bak"
+            fi
             show_prompt "Enter your custom MOTD (Ctrl+D when done):"
             cat > "$MOTD_FILE"
             show_success "Custom MOTD set"
@@ -528,7 +560,6 @@ configure_motd() {
 
 main() {
 
-    init_directories
     backup_initial_properties
     
     while true; do
