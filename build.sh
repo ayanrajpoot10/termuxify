@@ -20,7 +20,6 @@ mkdir -p "$DEB_DIR/DEBIAN" "$BIN_DIR" "$SHARE_DIR/colors" "$SHARE_DIR/fonts"
 
 for script in control postinst prerm postrm; do
     [[ -f "debian/$script" ]] || { echo "Error: debian/$script not found"; exit 1; }
-    sed -i 's/\r$//' "debian/$script"
     install -m $([ "$script" = "control" ] && echo "644" || echo "755") "debian/$script" "$DEB_DIR/DEBIAN/$script"
 done
 
