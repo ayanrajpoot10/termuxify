@@ -73,7 +73,7 @@ handle_error() {
     show_error "An error occurred during execution at line $line_no"
 }
 
-backup_initial_properties() {
+backup_properties() {
     local files=("$TERMUX_PROPERTIES" "$COLORS_PROPERTIES")
     for file in "${files[@]}"; do
         if [ -f "$file" ] && [ ! -f "${file}.backup" ]; then
@@ -152,95 +152,67 @@ get_shell_rc() {
     esac
 }
 
-load_custom_font() {
-    show_prompt "Enter path to font file:"
-    read source
-    
-    if [ ! -f "$source" ]; then
-        show_error "Font file not found!"
-        return 1
-    fi
-    
-    local font_name=$(basename "$source")
-    cp "$source" "$FONTS_DIR/$font_name"
-    show_success "Font loaded successfully!"
-    return 0
-}
-
-load_custom_theme() {
-    show_prompt "Enter path to theme file:"
-    read source
-    
-    if [ ! -f "$source" ]; then
-        show_error "Theme file not found!"
-        return 1
-    fi
-    
-    if ! grep -q "^color[0-9]\+=#[0-9A-Fa-f]\{6\}$\|^background=#[0-9A-Fa-f]\{6\}$\|^foreground=#[0-9A-Fa-f]\{6\}$" "$source"; then
-        show_error "Invalid theme file format!"
-        return 1
-    fi
-    
-    local theme_name=$(basename "$source")
-    cp "$source" "$COLORS_DIR/$theme_name"
-    show_success "Theme loaded successfully!"
-    return 0
-}
-
 display_selectable_items() {
     local current="$1"
     local items=("${@:2}")
     local page=${CURRENT_PAGE:-0}
-    local items_per_page=25
-    local total_pages=$(( (${#items[@]} + items_per_page - 1) / items_per_page ))
-
+    local per_page=25
+    local start=$((page * per_page))
+    local end=$((start + per_page))
+    [[ $end -gt ${#items[@]} ]] && end=${#items[@]}
+    
     if [[ "default" == "${current%.*}" ]]; then
         echo -e "${LEFT_PADDING}${COLOR[highlight]}[D] Default ${COLOR[success]}← USED${COLOR[reset]}"
     else
         echo -e "${LEFT_PADDING}${COLOR[text]}[D] Default${COLOR[reset]}"
     fi
     
-    local start=$((page * items_per_page))
-    local end=$((start + items_per_page))
-    [[ $end -gt ${#items[@]} ]] && end=${#items[@]}
-    
     for ((i = start; i < end; i++)); do
-        local item=${items[$i]}
-        local name=$(basename "${item%.*}")
-        local display_num=$((i + 1))
+        local name=$(basename "${items[$i]%.*}")
+        local num=$((i + 1))
+        
         if [[ "$name" == "${current%.*}" ]]; then
-            echo -e "${LEFT_PADDING}${COLOR[highlight]}[${display_num}] ${name} ${COLOR[success]}← USED${COLOR[reset]}"
+            echo -e "${LEFT_PADDING}${COLOR[highlight]}[$num] $name ${COLOR[success]}← USED${COLOR[reset]}"
         else
-            echo -e "${LEFT_PADDING}${COLOR[text]}[${display_num}] ${name}${COLOR[reset]}"
+            echo -e "${LEFT_PADDING}${COLOR[text]}[$num] $name${COLOR[reset]}"
         fi
     done
 
-    echo
-    echo -e "${LEFT_PADDING}${COLOR[muted]}Page $((page + 1))/$total_pages${COLOR[reset]}"
-    echo -e "${LEFT_PADDING}${COLOR[secondary]}[N] Next page${COLOR[reset]}"
-    echo -e "${LEFT_PADDING}${COLOR[secondary]}[P] Previous page${COLOR[reset]}"
+    local total_pages=$(( (${#items[@]} + per_page - 1) / per_page ))
+    echo -e "\n${LEFT_PADDING}${COLOR[muted]}Page $((page + 1))/$total_pages${COLOR[reset]}"
+    echo -e "${LEFT_PADDING}${COLOR[secondary]}[N] Next [P] Previous${COLOR[reset]}"
 }
 
 handle_pagination_input() {
-    local items_count=$1
-    local items_per_page=25
-    local total_pages=$(( (items_count + items_per_page - 1) / items_per_page ))
+    local total_pages=$(( ($1 + 24) / 25 ))
     
     case $choice in
-        [Nn])
-            CURRENT_PAGE=$((CURRENT_PAGE + 1))
-            [[ $CURRENT_PAGE -ge $total_pages ]] && CURRENT_PAGE=$((total_pages - 1))
-            return 1
-            ;;
-        [Pp])
-            CURRENT_PAGE=$((CURRENT_PAGE - 1))
-            [[ $CURRENT_PAGE -lt 0 ]] && CURRENT_PAGE=0
-            return 1
-            ;;
-        *)
-            return 0
-            ;;
+        [Nn]) ((CURRENT_PAGE = CURRENT_PAGE >= total_pages - 1 ? total_pages - 1 : CURRENT_PAGE + 1)); return 1 ;;
+        [Pp]) ((CURRENT_PAGE = CURRENT_PAGE <= 0 ? 0 : CURRENT_PAGE - 1)); return 1 ;;
+        *) return 0 ;;
     esac
+}
+
+display_font_menu() {
+    local current_font="$1"
+    local installed_fonts=($FONTS_DIR/*)
+    
+    if [[ "default" == "${current_font%.*}" ]]; then
+        echo -e "${LEFT_PADDING}${COLOR[highlight]}[0] Default ${COLOR[success]}← USED${COLOR[reset]}"
+    else
+        echo -e "${LEFT_PADDING}${COLOR[text]}[0] Default${COLOR[reset]}"
+    fi
+    
+    for ((i = 0; i < ${#installed_fonts[@]}; i++)); do
+        local font=${installed_fonts[$i]}
+        local name=$(basename "${font%.*}")
+        local display_num=$((i + 1))
+        if [[ "$name" == "${current_font%.*}" ]]; then
+            echo -e "${LEFT_PADDING}${COLOR[highlight]}[$display_num] ${name} ${COLOR[success]}← USED${COLOR[reset]}"
+        else
+            echo -e "${LEFT_PADDING}${COLOR[text]}[$display_num] ${name}${COLOR[reset]}"
+        fi
+    done
 }
 
 configure_font_style() {
@@ -248,42 +220,34 @@ configure_font_style() {
     show_bordered_header "Font Configuration"
     
     local current_font=$(get_current_font)
-    local fonts=($FONTS_DIR/*)
-    CURRENT_PAGE=0
     
     while true; do
         clear
         show_bordered_header "Font Configuration"
-        display_selectable_items "$current_font" "${fonts[@]}"
-        echo -e "${LEFT_PADDING}${COLOR[secondary]}[L] Load font${COLOR[reset]}"
+        display_font_menu "$current_font"
         
         show_prompt "Select option:"
         read choice
         
-        if ! handle_pagination_input ${#fonts[@]}; then
-            continue
-        fi
-        
         case $choice in
-            [Dd])
+            0)
                 rm -f "$TERMUX_DIR/font.ttf"
                 echo "default" > "$CURRENT_FONT_FILE"
                 break
                 ;;
-            [Ll])
-                if load_custom_font; then
-                    configure_font_style
-                    return
-                fi
-                break
-                ;;
-            [0-9]*)
-                local actual_choice=$((choice - 1))
-                if [ "$actual_choice" -lt "${#fonts[@]}" ]; then
-                    font=${fonts[$actual_choice]}
-                    cp "$font" "$TERMUX_DIR/font.ttf"
-                    echo "$(basename "$font")" > "$CURRENT_FONT_FILE"
-                    break
+            [1-9]*)
+                local installed_fonts=($FONTS_DIR/*)
+                local idx=$((choice - 1))
+                if [ "$idx" -lt "${#installed_fonts[@]}" ]; then
+                    local font=${installed_fonts[$idx]}
+                    local font_file=$(find "$font" -type f -name "*.ttf" | head -n 1)
+                    if [ -n "$font_file" ]; then
+                        cp "$font_file" "$TERMUX_DIR/font.ttf"
+                        echo "$(basename "$font")" > "$CURRENT_FONT_FILE"
+                        break
+                    else
+                        show_error "No valid font file found in the directory"
+                    fi
                 else
                     show_error "Invalid selection"
                     return
@@ -313,8 +277,6 @@ change_colors() {
         show_bordered_header "Color Theme Configuration"
         display_selectable_items "$current_theme" "${schemes[@]}"
         echo -e "${LEFT_PADDING}${COLOR[secondary]}[R] Random theme${COLOR[reset]}"
-        echo -e "${LEFT_PADDING}${COLOR[secondary]}[L] Load theme${COLOR[reset]}"
-        echo -e "${LEFT_PADDING}${COLOR[secondary]}[C] Create custom theme${COLOR[reset]}"
         
         show_prompt "Select option:"
         read choice
@@ -334,17 +296,6 @@ change_colors() {
                 cp "$COLORS_DIR/$random_scheme" "$COLORS_PROPERTIES"
                 echo "$random_scheme" > "$CURRENT_THEME_FILE"
                 break
-                ;;
-            [Ll])
-                if load_custom_theme; then
-                    change_colors
-                    return
-                fi
-                break
-                ;;
-            [Cc])
-                create_custom_theme
-                return
                 ;;
             [0-9]*)
                 local actual_choice=$((choice - 1))
@@ -367,52 +318,6 @@ change_colors() {
     
     termux-reload-settings
     show_success "Color theme updated"
-}
-
-create_custom_theme() {
-    clear
-    show_bordered_header "Create Custom Color Theme"
-    show_info "Enter color values in hexadecimal format (e.g., #FF0000)"
-    
-    local colors=(
-        "background" "foreground" "cursor" 
-        "color0" "color1" "color2" "color3" 
-        "color4" "color5" "color6" "color7"
-        "color8" "color9" "color10" "color11"
-        "color12" "color13" "color14" "color15"
-    )
-    
-    local theme_content=""
-    local theme_name
-    
-    show_prompt "Enter theme name:"
-    read theme_name
-    
-    for color in "${colors[@]}"; do
-        while true; do
-            show_prompt "Enter $color color:"
-            read value
-            if [[ $value =~ ^#[0-9A-Fa-f]{6}$ ]]; then
-                theme_content+="$color=$value"$'\n'
-                break
-            else
-                show_error "Invalid color format. Use #RRGGBB format"
-            fi
-        done
-    done
-    
-    local theme_file="$COLORS_DIR/${theme_name}.properties"
-    echo -n "$theme_content" > "$theme_file"
-    show_success "Theme created: $theme_name"
-    
-    show_prompt "Apply this theme now? (y/N):"
-    read apply
-    if [ "$apply" = "y" ] || [ "$apply" = "Y" ]; then
-        cp "$theme_file" "$COLORS_PROPERTIES"
-        echo "${theme_name}.properties" > "$CURRENT_THEME_FILE"
-        termux-reload-settings
-        show_success "Theme applied"
-    fi
 }
 
 change_cursor() {
@@ -714,7 +619,7 @@ show_about() {
 }
 
 main() {
-    backup_initial_properties
+    backup_properties
     
     while true; do
         show_banner
