@@ -190,23 +190,57 @@ load_custom_theme() {
 display_selectable_items() {
     local current="$1"
     local items=("${@:2}")
-    
+    local page=${CURRENT_PAGE:-0}
+    local items_per_page=25
+    local total_pages=$(( (${#items[@]} + items_per_page - 1) / items_per_page ))
+
     if [[ "default" == "${current%.*}" ]]; then
         echo -e "${LEFT_PADDING}${COLOR[highlight]}[D] Default ${COLOR[success]}← USED${COLOR[reset]}"
     else
         echo -e "${LEFT_PADDING}${COLOR[text]}[D] Default${COLOR[reset]}"
     fi
     
-    local count=0
-    for item in "${items[@]}"; do
+    local start=$((page * items_per_page))
+    local end=$((start + items_per_page))
+    [[ $end -gt ${#items[@]} ]] && end=${#items[@]}
+    
+    for ((i = start; i < end; i++)); do
+        local item=${items[$i]}
         local name=$(basename "${item%.*}")
+        local display_num=$((i + 1))
         if [[ "$name" == "${current%.*}" ]]; then
-            echo -e "${LEFT_PADDING}${COLOR[highlight]}[${count}] ${name} ${COLOR[success]}← USED${COLOR[reset]}"
+            echo -e "${LEFT_PADDING}${COLOR[highlight]}[${display_num}] ${name} ${COLOR[success]}← USED${COLOR[reset]}"
         else
-            echo -e "${LEFT_PADDING}${COLOR[text]}[${count}] ${name}${COLOR[reset]}"
+            echo -e "${LEFT_PADDING}${COLOR[text]}[${display_num}] ${name}${COLOR[reset]}"
         fi
-        count=$((count+1))
     done
+
+    echo
+    echo -e "${LEFT_PADDING}${COLOR[muted]}Page $((page + 1))/$total_pages${COLOR[reset]}"
+    echo -e "${LEFT_PADDING}${COLOR[secondary]}[N] Next page${COLOR[reset]}"
+    echo -e "${LEFT_PADDING}${COLOR[secondary]}[P] Previous page${COLOR[reset]}"
+}
+
+handle_pagination_input() {
+    local items_count=$1
+    local items_per_page=25
+    local total_pages=$(( (items_count + items_per_page - 1) / items_per_page ))
+    
+    case $choice in
+        [Nn])
+            CURRENT_PAGE=$((CURRENT_PAGE + 1))
+            [[ $CURRENT_PAGE -ge $total_pages ]] && CURRENT_PAGE=$((total_pages - 1))
+            return 1
+            ;;
+        [Pp])
+            CURRENT_PAGE=$((CURRENT_PAGE - 1))
+            [[ $CURRENT_PAGE -lt 0 ]] && CURRENT_PAGE=0
+            return 1
+            ;;
+        *)
+            return 0
+            ;;
+    esac
 }
 
 configure_font_style() {
@@ -215,39 +249,52 @@ configure_font_style() {
     
     local current_font=$(get_current_font)
     local fonts=($FONTS_DIR/*)
+    CURRENT_PAGE=0
     
-    display_selectable_items "$current_font" "${fonts[@]}"
-    echo -e "${LEFT_PADDING}${COLOR[secondary]}[L] Load font${COLOR[reset]}"
-    
-    show_prompt "Select option:"
-    read choice
-    
-    case $choice in
-        [Dd])
-            rm -f "$TERMUX_DIR/font.ttf"
-            echo "default" > "$CURRENT_FONT_FILE"
-            ;;
-        [Ll])
-            if load_custom_font; then
-                configure_font_style
+    while true; do
+        clear
+        show_bordered_header "Font Configuration"
+        display_selectable_items "$current_font" "${fonts[@]}"
+        echo -e "${LEFT_PADDING}${COLOR[secondary]}[L] Load font${COLOR[reset]}"
+        
+        show_prompt "Select option:"
+        read choice
+        
+        if ! handle_pagination_input ${#fonts[@]}; then
+            continue
+        fi
+        
+        case $choice in
+            [Dd])
+                rm -f "$TERMUX_DIR/font.ttf"
+                echo "default" > "$CURRENT_FONT_FILE"
+                break
+                ;;
+            [Ll])
+                if load_custom_font; then
+                    configure_font_style
+                    return
+                fi
+                break
+                ;;
+            [0-9]*)
+                local actual_choice=$((choice - 1))
+                if [ "$actual_choice" -lt "${#fonts[@]}" ]; then
+                    font=${fonts[$actual_choice]}
+                    cp "$font" "$TERMUX_DIR/font.ttf"
+                    echo "$(basename "$font")" > "$CURRENT_FONT_FILE"
+                    break
+                else
+                    show_error "Invalid selection"
+                    return
+                fi
+                ;;
+            *)
+                show_error "Invalid option"
                 return
-            fi
-            ;;
-        [0-9]*)
-            if [ "$choice" -lt "${#fonts[@]}" ]; then
-                font=${fonts[$choice]}
-                cp "$font" "$TERMUX_DIR/font.ttf"
-                echo "$(basename "$font")" > "$CURRENT_FONT_FILE"
-            else
-                show_error "Invalid selection"
-                return
-            fi
-            ;;
-        *)
-            show_error "Invalid option"
-            return
-            ;;
-    esac
+                ;;
+        esac
+    done
     
     termux-reload-settings
     show_success "Font updated"
@@ -259,50 +306,64 @@ change_colors() {
     
     local current_theme=$(get_current_theme)
     local schemes=($COLORS_DIR/*)
+    CURRENT_PAGE=0
     
-    display_selectable_items "$current_theme" "${schemes[@]}"
-    echo -e "${LEFT_PADDING}${COLOR[secondary]}[R] Random theme${COLOR[reset]}"
-    echo -e "${LEFT_PADDING}${COLOR[secondary]}[L] Load theme${COLOR[reset]}"
-    echo -e "${LEFT_PADDING}${COLOR[secondary]}[C] Create custom theme${COLOR[reset]}"
-    
-    show_prompt "Select option:"
-    read choice
-    
-    case $choice in
-        [Dd])
-            rm -f "$COLORS_PROPERTIES"
-            echo "default" > "$CURRENT_THEME_FILE"
-            ;;
-        [Rr])
-            random_scheme=$(ls $COLORS_DIR | shuf -n 1)
-            cp "$COLORS_DIR/$random_scheme" "$COLORS_PROPERTIES"
-            echo "$random_scheme" > "$CURRENT_THEME_FILE"
-            ;;
-        [Ll])
-            if load_custom_theme; then
-                change_colors
+    while true; do
+        clear
+        show_bordered_header "Color Theme Configuration"
+        display_selectable_items "$current_theme" "${schemes[@]}"
+        echo -e "${LEFT_PADDING}${COLOR[secondary]}[R] Random theme${COLOR[reset]}"
+        echo -e "${LEFT_PADDING}${COLOR[secondary]}[L] Load theme${COLOR[reset]}"
+        echo -e "${LEFT_PADDING}${COLOR[secondary]}[C] Create custom theme${COLOR[reset]}"
+        
+        show_prompt "Select option:"
+        read choice
+        
+        if ! handle_pagination_input ${#schemes[@]}; then
+            continue
+        fi
+        
+        case $choice in
+            [Dd])
+                rm -f "$COLORS_PROPERTIES"
+                echo "default" > "$CURRENT_THEME_FILE"
+                break
+                ;;
+            [Rr])
+                random_scheme=$(ls $COLORS_DIR | shuf -n 1)
+                cp "$COLORS_DIR/$random_scheme" "$COLORS_PROPERTIES"
+                echo "$random_scheme" > "$CURRENT_THEME_FILE"
+                break
+                ;;
+            [Ll])
+                if load_custom_theme; then
+                    change_colors
+                    return
+                fi
+                break
+                ;;
+            [Cc])
+                create_custom_theme
                 return
-            fi
-            ;;
-        [Cc])
-            create_custom_theme
-            return
-            ;;
-        [0-9]*)
-            if [ "$choice" -lt "${#schemes[@]}" ]; then
-                scheme=${schemes[$choice]}
-                cp "$scheme" "$COLORS_PROPERTIES"
-                echo "$(basename "$scheme")" > "$CURRENT_THEME_FILE"
-            else
-                show_error "Invalid selection"
+                ;;
+            [0-9]*)
+                local actual_choice=$((choice - 1))
+                if [ "$actual_choice" -lt "${#schemes[@]}" ]; then
+                    scheme=${schemes[$actual_choice]}
+                    cp "$scheme" "$COLORS_PROPERTIES"
+                    echo "$(basename "$scheme")" > "$CURRENT_THEME_FILE"
+                    break
+                else
+                    show_error "Invalid selection"
+                    return
+                fi
+                ;;
+            *)
+                show_error "Invalid option"
                 return
-            fi
-            ;;
-        *)
-            show_error "Invalid option"
-            return
-            ;;
-    esac
+                ;;
+        esac
+    done
     
     termux-reload-settings
     show_success "Color theme updated"
