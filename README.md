@@ -4,7 +4,10 @@ Terminal customization tool for Termux
 
 ## Installation
 
-### Method 1: Using apt (Recommended)
+> [!NOTE]\
+> Method 1 is recommended for better experience and easier updates.
+
+### Method 1: Using apt/pkg (Recommended)
 ```bash
 # Add the apt repository
 echo "deb [trusted=yes] https://ayanrajpoot10.github.io/termuxify/ stable main" >> $PREFIX/etc/apt/sources.list
@@ -13,7 +16,7 @@ echo "deb [trusted=yes] https://ayanrajpoot10.github.io/termuxify/ stable main" 
 pkg install termuxify
 ```
 
-### Method 2: Using One-Line Installer
+### Method 2: Quick install
 ```bash
 curl -sL https://raw.githubusercontent.com/Ayanrajpoot10/termuxify/main/install.sh | bash
 ```
