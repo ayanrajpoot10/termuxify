@@ -13,19 +13,9 @@ echo "deb [trusted=yes] https://ayanrajpoot10.github.io/termuxify/ stable main" 
 pkg install termuxify
 ```
 
-### Method 2: Manual Installation
+### Method 2: Using One-Line Installer
 ```bash
-# Clone the repository
-git clone https://github.com/Ayanrajpoot10/termuxify.git
-
-# Change to directory
-cd termuxify
-
-# Make install script executable
-chmod +x install.sh
-
-# Run installer
-./install.sh
+curl -sL https://raw.githubusercontent.com/Ayanrajpoot10/termuxify/main/install.sh | bash
 ```
 
 After installation, you can run termuxify from anywhere by typing:
