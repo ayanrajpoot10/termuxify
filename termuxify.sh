@@ -115,7 +115,7 @@ update_property() {
     touch "$file"
     
     if grep -q "^[#[:space:]]*${property}[[:space:]]*=.*$" "$file"; then
-        sed -i -E "s/^[#[:space:]]*${property}[[:space:]]*=.*$/${property}=${value}/" "$file"
+        sed -i "s@^[#[:space:]]*${property}[[:space:]]*=.*\$@${property}=${value}@" "$file"
     else
         echo "${property}=${value}" >> "$file"
     fi
@@ -556,8 +556,103 @@ configure_motd() {
     esac
 }
 
-main() {
+configure_default_directory() {
+    clear
+    show_bordered_header "Default Directory Configuration"
+    
+    local current_dir=$(grep "^default-working-directory=" "$TERMUX_PROPERTIES" 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || echo "$HOME")
+    
+    show_info "Current default directory: ${COLOR[highlight]}$current_dir${COLOR[reset]}"
+    echo
+    show_info "1. Set custom directory"
+    show_info "2. Reset to home directory"
+    
+    show_prompt "Select option [1-2]:"
+    read choice
+    
+    case $choice in
+        1)
+            show_prompt "Enter new default directory path:"
+            read new_dir
+            
+            if [ -d "$new_dir" ]; then
+                update_property "$TERMUX_PROPERTIES" "default-working-directory" "$new_dir"
+                show_success "Default directory updated to: $new_dir"
+                show_warning "Restart Termux for changes to take effect"
+            else
+                show_error "Directory does not exist!"
+            fi
+            ;;
+        2)
+            sed -i '/^default-working-directory=/d' "$TERMUX_PROPERTIES"
+            show_success "Reset to home directory"
+            show_warning "Restart Termux for changes to take effect"
+            ;;
+        *)
+            show_error "Invalid option"
+            return
+            ;;
+    esac
+}
 
+configure_fullscreen() {
+    clear
+    show_bordered_header "Fullscreen Configuration"
+    
+    local current_fullscreen=$(grep "^fullscreen=" "$TERMUX_PROPERTIES" 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || echo "false")
+    local current_workaround=$(grep "^use-fullscreen-workaround=" "$TERMUX_PROPERTIES" 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || echo "false")
+    
+    show_info "Current settings:"
+    echo -e "${LEFT_PADDING}${COLOR[text]}Fullscreen: ${COLOR[highlight]}$current_fullscreen${COLOR[reset]}"
+    echo -e "${LEFT_PADDING}${COLOR[text]}Workaround: ${COLOR[highlight]}$current_workaround${COLOR[reset]}"
+    echo
+    show_info "1. Toggle fullscreen"
+    show_info "2. Toggle fullscreen workaround"
+    show_info "3. Reset to default"
+    
+    show_prompt "Select option [1-3]:"
+    read choice
+    
+    case $choice in
+        1)
+            local new_value=$([ "$current_fullscreen" = "true" ] && echo "false" || echo "true")
+            update_property "$TERMUX_PROPERTIES" "fullscreen" "$new_value"
+            show_success "Fullscreen set to: $new_value"
+            ;;
+        2)
+            local new_value=$([ "$current_workaround" = "true" ] && echo "false" || echo "true")
+            update_property "$TERMUX_PROPERTIES" "use-fullscreen-workaround" "$new_value"
+            show_success "Fullscreen workaround set to: $new_value"
+            ;;
+        3)
+            sed -i '/^fullscreen=/d' "$TERMUX_PROPERTIES"
+            sed -i '/^use-fullscreen-workaround=/d' "$TERMUX_PROPERTIES"
+            show_success "Reset to default settings"
+            ;;
+        *)
+            show_error "Invalid option"
+            return
+            ;;
+    esac
+    
+    show_warning "Restart Termux for changes to take effect"
+}
+
+show_about() {
+    clear
+    show_bordered_header "About TermuXify"
+    
+    echo -e "${LEFT_PADDING}${COLOR[text]}Version: ${COLOR[highlight]}${VERSION}${COLOR[reset]}"
+    echo -e "${LEFT_PADDING}${COLOR[text]}Author:  ${COLOR[highlight]}${AUTHOR}${COLOR[reset]}"
+    echo -e "${LEFT_PADDING}${COLOR[text]}GitHub:  ${COLOR[highlight]}${GITHUB}${COLOR[reset]}"
+    echo -e "${LEFT_PADDING}${COLOR[text]}Telegram: ${COLOR[highlight]}@Ayan_rajpoot${COLOR[reset]}"
+    echo
+    show_info "Description:"
+    echo -e "${LEFT_PADDING}${COLOR[text]}A powerful customization tool for Termux that allows you${COLOR[reset]}"
+    echo -e "${LEFT_PADDING}${COLOR[text]}to easily configure themes, fonts, colors, and more.${COLOR[reset]}"
+}
+
+main() {
     backup_initial_properties
     
     while true; do
@@ -577,13 +672,16 @@ main() {
         echo
         show_header "CONFIGURATION"
         show_info "4. MOTD"
+        show_info "5. Default Directory"
+        show_info "6. Fullscreen"
         echo
         show_header "MANAGEMENT"
-        show_info "5. Aliases"
-        show_info "6. Exit"
+        show_info "7. Aliases"
+        show_info "8. About"
+        show_info "9. Exit"
         
         echo
-        show_prompt "Your choice [1-6]:"
+        show_prompt "Your choice [1-9]:"
         read choice
 
         case $choice in
@@ -591,8 +689,11 @@ main() {
             2) change_colors ;;
             3) change_cursor ;;
             4) configure_motd ;;
-            5) manage_aliases ;;
-            6) show_success "Thanks for using TermuXify!" && exit 0 ;;
+            5) configure_default_directory ;;
+            6) configure_fullscreen ;;
+            7) manage_aliases ;;
+            8) show_about ;;
+            9) show_success "Thanks for using TermuXify!" && exit 0 ;;
             *) show_error "Invalid option" ;;
         esac
         
