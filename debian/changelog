@@ -1,3 +1,18 @@
+termuxify (0.4.0) stable; urgency=medium
+
+  * Added 250+ new color themes
+  * Performance optimizations
+  * Fixed terminal rendering issues on various devices
+
+ -- Ayan Rajpoot <Ayanrajpoot2004@gmail.com>  Fri, 18 Sep 2025 10:45:00 +0530
+
+termuxify (0.3.0) stable; urgency=medium
+
+  * Enhanced theme customization options
+  * Bug fixes and stability improvements
+
+ -- Ayan Rajpoot <Ayanrajpoot2004@gmail.com>  Wed, 11 Jun 2025 14:15:00 +0530
+
 termuxify (0.2.0) stable; urgency=medium
 
   * New version release

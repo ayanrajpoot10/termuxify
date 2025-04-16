@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-readonly VERSION="0.3.0"
+readonly VERSION="0.4.0"
 readonly AUTHOR="Ayan Rajpoot"
 readonly GITHUB="https://github.com/Ayanrajpoot10/TermuXify"
 
@@ -82,7 +82,7 @@ backup_properties() {
     done
 }
 
-show_banner() {
+banner() {
     clear
     echo
     printf "${LEFT_PADDING}${COLOR[accent]}${COLOR[bold]}"
@@ -93,12 +93,7 @@ show_banner() {
     printf "${LEFT_PADDING}${COLOR[dim]} Terminal customization tool | v${VERSION}${COLOR[reset]}\n\n"
 }
 
-show_header() {
-    local msg=$1
-    echo -e "${LEFT_PADDING}${COLOR[header]}${msg}${COLOR[reset]}"
-}
-
-show_bordered_header() {
+make_banner() {
     local msg=$1
     local width=35
     local padding=$(( (width - ${#msg}) / 2 ))
@@ -138,61 +133,45 @@ get_current_font() {
 }
 
 get_shell_rc() {
-    local shell_path=$(echo $SHELL)
-    case "$shell_path" in
-        *zsh)
-            echo "$HOME/.zshrc"
-            ;;
-        *bash)
-            echo "$HOME/.bashrc"
-            ;;
-        *)
-            echo ""
-            ;;
-    esac
+    if [[ $SHELL == *"zsh" ]]; then
+        echo "$HOME/.zshrc"
+    elif [[ $SHELL == *"bash" ]]; then
+        echo "$HOME/.bashrc"
+    else
+        echo ""
+    fi
 }
 
 display_selectable_items() {
-    local current="$1"
+    local current="${1%.*}"
     local items=("${@:2}")
     local page=${CURRENT_PAGE:-0}
     local per_page=25
     local start=$((page * per_page))
-    local end=$((start + per_page))
-    [[ $end -gt ${#items[@]} ]] && end=${#items[@]}
-    
-    local max_width=1
-    for ((i = start; i < end; i++)); do
-        local num=$((i + 1))
-        local num_width=${#num}
-        [[ $num_width -gt $max_width ]] && max_width=$num_width
-    done
+    local end=$(( start + per_page < ${#items[@]} ? start + per_page : ${#items[@]} ))
     
     for ((i = start; i < end; i++)); do
         local name=$(basename "${items[$i]%.*}")
         local num=$((i + 1))
-        local num_formatted=$(printf "[%${max_width}d]" $num)
         
-        if [[ "$name" == "${current%.*}" ]]; then
-            echo -e "${LEFT_PADDING}${COLOR[highlight]}$num_formatted $name ${COLOR[success]}← USED${COLOR[reset]}"
+        if [[ "$name" == "$current" ]]; then
+            echo -e "${LEFT_PADDING}${COLOR[highlight]}[$num] $name ${COLOR[success]}← USED${COLOR[reset]}"
         else
-            echo -e "${LEFT_PADDING}${COLOR[text]}$num_formatted $name${COLOR[reset]}"
+            echo -e "${LEFT_PADDING}${COLOR[text]}[$num] $name${COLOR[reset]}"
         fi
     done
 
-    local total_pages=$(( (${#items[@]} + per_page - 1) / per_page ))
-    echo -e "\n${LEFT_PADDING}${COLOR[muted]}Page $((page + 1))/$total_pages${COLOR[reset]}"
+    echo -e "\n${LEFT_PADDING}${COLOR[muted]}Page $((page + 1))/$(( (${#items[@]} + per_page - 1) / per_page ))${COLOR[reset]}"
+    echo -e "${LEFT_PADDING}${COLOR[secondary]}[N] Next [P] Previous${COLOR[reset]}"
     
-    if [[ "default" == "${current%.*}" ]]; then
-        echo -e "${LEFT_PADDING}${COLOR[highlight]}[D] Default${COLOR[reset]}"
+    if [[ "default" == "$current" ]]; then
+        echo -e "${LEFT_PADDING}${COLOR[highlight]}[D] Default ${COLOR[success]}← USED${COLOR[reset]}"
     else
         echo -e "${LEFT_PADDING}${COLOR[secondary]}[D] Default${COLOR[reset]}"
     fi
-    
-    echo -e "${LEFT_PADDING}${COLOR[secondary]}[N] Next [P] Previous${COLOR[reset]}"
 }
 
-handle_pagination_input() {
+handle_pagination() {
     local total_pages=$(( ($1 + 24) / 25 ))
     
     case $choice in
@@ -203,53 +182,45 @@ handle_pagination_input() {
 }
 
 change_font() {
-    clear
-    show_bordered_header "Font Configuration"
-    
     local current_font=$(get_current_font)
     local installed_fonts=($FONTS_DIR/*)
     CURRENT_PAGE=0
     
     while true; do
         clear
-        show_bordered_header "Font Configuration"
+        make_banner "Font Configuration"
         display_selectable_items "$current_font" "${installed_fonts[@]}"
-        
         show_prompt "Select option:"
         read choice
         
-        if ! handle_pagination_input ${#installed_fonts[@]}; then
+        if ! handle_pagination ${#installed_fonts[@]}; then
             continue
         fi
         
-        case $choice in
-            [Dd])
-                rm -f "$TERMUX_DIR/font.ttf"
-                echo "default" > "$CURRENT_FONT_FILE"
-                break
-                ;;
-            [0-9]*)
-                local actual_choice=$((choice - 1))
-                if [ "$actual_choice" -lt "${#installed_fonts[@]}" ]; then
-                    local font=${installed_fonts[$actual_choice]}
-                    local font_file=$(find "$font" -type f -name "*.ttf" | head -n 1)
-                    if [ -n "$font_file" ]; then
-                        cp "$font_file" "$TERMUX_DIR/font.ttf"
-                        echo "$(basename "$font")" > "$CURRENT_FONT_FILE"
-                        break
-                    else
-                        show_error "No valid font file found in the directory"
-                    fi
-                else
-                    show_error "Invalid selection"
-                    return
-                fi
-                ;;
-            *)
-                show_error "Invalid option"
+        if [[ $choice == [Dd] ]]; then
+            rm -f "$TERMUX_DIR/font.ttf"
+            echo "default" > "$CURRENT_FONT_FILE"
+            break
+        elif [[ $choice =~ ^[0-9]+$ ]]; then
+            local idx=$((choice - 1))
+            if [ "$idx" -ge "${#installed_fonts[@]}" ]; then
+                show_error "Invalid selection"
                 return
-                ;;
-        esac
+            fi
+            
+            local font_file=$(find "${installed_fonts[$idx]}" -type f -name "*.ttf" | head -n 1)
+            if [ -z "$font_file" ]; then
+                show_error "No valid font file found"
+                return
+            fi
+            
+            cp "$font_file" "$TERMUX_DIR/font.ttf"
+            echo "$(basename "${installed_fonts[$idx]}")" > "$CURRENT_FONT_FILE"
+            break
+        else
+            show_error "Invalid option"
+            return
+        fi
     done
     
     termux-reload-settings
@@ -257,55 +228,38 @@ change_font() {
 }
 
 change_colors() {
-    clear
-    show_bordered_header "Color Theme Configuration"
-    
     local current_theme=$(get_current_theme)
     local schemes=($COLORS_DIR/*)
     CURRENT_PAGE=0
     
     while true; do
         clear
-        show_bordered_header "Color Theme Configuration"
+        make_banner "Color Theme Configuration"
         display_selectable_items "$current_theme" "${schemes[@]}"
         echo -e "${LEFT_PADDING}${COLOR[secondary]}[R] Random theme${COLOR[reset]}"
-        
         show_prompt "Select option:"
         read choice
         
-        if ! handle_pagination_input ${#schemes[@]}; then
+        if ! handle_pagination ${#schemes[@]}; then
             continue
         fi
         
-        case $choice in
-            [Dd])
-                rm -f "$COLORS_PROPERTIES"
-                echo "default" > "$CURRENT_THEME_FILE"
-                break
-                ;;
-            [Rr])
-                random_scheme=$(ls $COLORS_DIR | shuf -n 1)
-                cp "$COLORS_DIR/$random_scheme" "$COLORS_PROPERTIES"
-                echo "$random_scheme" > "$CURRENT_THEME_FILE"
-                break
-                ;;
-            [0-9]*)
-                local actual_choice=$((choice - 1))
-                if [ "$actual_choice" -lt "${#schemes[@]}" ]; then
-                    scheme=${schemes[$actual_choice]}
-                    cp "$scheme" "$COLORS_PROPERTIES"
-                    echo "$(basename "$scheme")" > "$CURRENT_THEME_FILE"
-                    break
-                else
-                    show_error "Invalid selection"
-                    return
-                fi
-                ;;
-            *)
-                show_error "Invalid option"
-                return
-                ;;
-        esac
+        if [[ $choice == [Dd] ]]; then
+            rm -f "$COLORS_PROPERTIES"
+            echo "default" > "$CURRENT_THEME_FILE"
+            break
+        elif [[ $choice == [Rr] ]]; then
+            cp "$COLORS_DIR/$(ls $COLORS_DIR | shuf -n 1)" "$COLORS_PROPERTIES"
+            basename "$COLORS_PROPERTIES" > "$CURRENT_THEME_FILE"
+            break
+        elif [[ $choice =~ ^[0-9]+$ ]] && ((choice-1 < ${#schemes[@]})); then
+            cp "${schemes[$((choice-1))]}" "$COLORS_PROPERTIES"
+            basename "${schemes[$((choice-1))]}" > "$CURRENT_THEME_FILE"
+            break
+        else
+            show_error "Invalid option"
+            return
+        fi
     done
     
     termux-reload-settings
@@ -314,66 +268,40 @@ change_colors() {
 
 change_cursor() {
     clear
-    show_bordered_header "Cursor Style Configuration"
+    make_banner "Cursor Style Configuration"
     
     local current_style=$(grep "^terminal-cursor-style=" "$TERMUX_PROPERTIES" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "block")
     local current_blink=$(grep "^terminal-cursor-blink-rate=" "$TERMUX_PROPERTIES" 2>/dev/null | cut -d'=' -f2 || echo "0")
     
-    format_option() {
-        local num="${1:-}"
-        local name="${2:-}"
-        local style="${3:-}"
-        local extra_info="${4:-}"
-        
-        local format="${LEFT_PADDING}${COLOR[text]}"
-        [[ "$style" == "$current_style" ]] && format="${LEFT_PADDING}${COLOR[highlight]}"
-        
-        echo -en "$format$num. $name"
+    for i in "Block|block" "Underline|underline" "Bar|bar"; do
+        IFS="|" read -r name style <<< "$i"
+        echo -en "${LEFT_PADDING}${COLOR[text]}$((++count)). $name"
         [[ "$style" == "$current_style" ]] && echo -en " ${COLOR[success]}← USED"
-        [[ -n "$extra_info" ]] && echo -en " ${COLOR[success]}$extra_info"
         echo -e "${COLOR[reset]}"
-    }
+    done
     
-    format_option "1" "Block" "block"
-    format_option "2" "Underline" "underline"
-    format_option "3" "Bar" "bar"
-    format_option "4" "Configure Blinking" "" "$([[ $current_blink != "0" ]] && echo "← ENABLED (${current_blink}ms)")"
+    echo -en "${LEFT_PADDING}${COLOR[text]}4. Configure Blinking"
+    [[ $current_blink != "0" ]] && echo -en " ${COLOR[success]}← ENABLED (${current_blink}ms)"
+    echo -e "${COLOR[reset]}"
     
     show_prompt "Select cursor style [1-4]:"
     read choice
     
     case $choice in
-        1) update_property "$TERMUX_PROPERTIES" "terminal-cursor-style" "block" ;;
-        2) update_property "$TERMUX_PROPERTIES" "terminal-cursor-style" "underline" ;;
-        3) update_property "$TERMUX_PROPERTIES" "terminal-cursor-style" "bar" ;;
+        [1-3])
+            local styles=(block underline bar)
+            update_property "$TERMUX_PROPERTIES" "terminal-cursor-style" "${styles[$((choice-1))]}"
+            ;;
         4)
-            show_bordered_header "Cursor Blink Configuration"
-            show_info "1. Enable blinking"
-            show_info "2. Disable blinking"
-            show_prompt "Select option [1-2]:"
-            read blink_choice
-
-            case $blink_choice in
-                1)
-                    show_prompt "Enter blink rate in milliseconds (e.g., 500 for 2 blinks/sec):"
-                    read blink_rate
-                    if [[ "$blink_rate" =~ ^[0-9]+$ ]]; then
-                        update_property "$TERMUX_PROPERTIES" "terminal-cursor-blink-rate" "$blink_rate"
-                        show_success "Cursor blink rate set to $blink_rate ms"
+            show_prompt "Enable blinking? [y/N]:"
+            read yn
+            if [[ $yn =~ ^[Yy] ]]; then
+                show_prompt "Enter blink rate (ms):"
+                read rate
+                [[ $rate =~ ^[0-9]+$ ]] && update_property "$TERMUX_PROPERTIES" "terminal-cursor-blink-rate" "$rate" || show_error "Invalid rate"
             else
-                        show_error "Invalid blink rate"
-                return
+                update_property "$TERMUX_PROPERTIES" "terminal-cursor-blink-rate" "0"
             fi
-            ;;
-                2)
-            update_property "$TERMUX_PROPERTIES" "terminal-cursor-blink-rate" "0"
-            show_success "Cursor blinking disabled"
-            ;;
-        *)
-            show_error "Invalid option"
-            return
-            ;;
-    esac
             ;;
         *)
             show_error "Invalid option"
@@ -389,17 +317,15 @@ change_cursor() {
 manage_aliases() {
     clear
     RC_FILE=$(get_shell_rc)
+    
     if [ -z "$RC_FILE" ]; then
         show_error "Unsupported shell! Only bash and zsh are supported."
         return
     fi
 
-    if [ ! -f "$RC_FILE" ]; then
-        touch "$RC_FILE"
-        show_warning "Created new $RC_FILE file"
-    fi
+    touch "$RC_FILE" 2>/dev/null
 
-    show_bordered_header "Alias Management"
+    make_banner "Alias Management"
     show_info "1. Add/Update alias"
     show_info "2. List existing aliases"
     show_info "3. Remove alias"
@@ -413,29 +339,21 @@ manage_aliases() {
             show_prompt "Enter command:"
             read alias_command
             
-            if grep -q "^alias $alias_name=" "$RC_FILE" 2>/dev/null; then
-                sed -i "/^alias $alias_name=/c\alias $alias_name='$alias_command'" "$RC_FILE"
-                source "$RC_FILE" 2>/dev/null || . "$RC_FILE"
-                show_success "Alias updated and applied!"
-            else
-                echo "alias $alias_name='$alias_command'" >> "$RC_FILE"
-                source "$RC_FILE" 2>/dev/null || . "$RC_FILE"
-                show_success "Alias added and applied!"
-            fi
+            sed -i "/^alias $alias_name=/d" "$RC_FILE"
+            echo "alias $alias_name='$alias_command'" >> "$RC_FILE"
+            source "$RC_FILE" 2>/dev/null || . "$RC_FILE"
+            show_success "Alias applied!"
             ;;
         2)
-            show_bordered_header "Existing aliases"
-            if ! grep "^alias" "$RC_FILE" 2>/dev/null; then
-                show_info "No aliases found"
-            fi
+            make_banner "Existing aliases"
+            grep "^alias" "$RC_FILE" 2>/dev/null || show_info "No aliases found"
             ;;
         3)
             show_prompt "Enter alias name to remove:"
             read alias_name
-            if grep -q "^alias $alias_name=" "$RC_FILE" 2>/dev/null; then
-                sed -i "/^alias $alias_name=/d" "$RC_FILE"
+            if sed -i "/^alias $alias_name=/d" "$RC_FILE"; then
                 source "$RC_FILE" 2>/dev/null || . "$RC_FILE"
-                show_success "Alias removed and applied!"
+                show_success "Alias removed!"
             else
                 show_warning "Alias not found"
             fi
@@ -446,116 +364,75 @@ manage_aliases() {
     esac
 }
 
-get_motd_status() {
-    if [ ! -f "$MOTD_FILE" ]; then
-        echo "disabled"
-    elif [ -f "$MOTD_FILE.bak" ]; then
-        echo "custom"
-    else
-        echo "default"
-    fi
-}
-
 configure_motd() {
     clear
-    local current_status=$(get_motd_status)
-    show_bordered_header "MOTD Configuration"
+    make_banner "MOTD Configuration"
     
-    format_option() {
-        local num="$1"
-        local name="$2"
-        local status="$3"
-        local current="$4"
-        
-        local format="${LEFT_PADDING}${COLOR[text]}"
-        [[ "$status" == "$current" ]] && format="${LEFT_PADDING}${COLOR[highlight]}"
-        
-        echo -en "$format$num. $name"
-        [[ "$status" == "$current" ]] && echo -en " ${COLOR[success]}← USED"
+    local status="default"
+    [ ! -f "$MOTD_FILE" ] && status="disabled"
+    [ -f "$MOTD_FILE.bak" ] && status="custom"
+    
+    for opt in "1. Disable MOTD|disabled" "2. Enable default MOTD|default" "3. Set custom MOTD|custom"; do
+        IFS="|" read -r text mode <<< "$opt"
+        echo -en "${LEFT_PADDING}${COLOR[text]}$text"
+        [[ "$mode" == "$status" ]] && echo -en " ${COLOR[success]}← USED"
         echo -e "${COLOR[reset]}"
-    }
-    
-    format_option "1" "Disable MOTD" "disabled" "$current_status"
-    format_option "2" "Enable default MOTD" "default" "$current_status"
-    format_option "3" "Set custom MOTD" "custom" "$current_status"
+    done
     
     show_prompt "Select option [1-3]:"
     read choice
     
     case $choice in
         1)
-            if [ -f "$MOTD_FILE" ]; then
-                mv "$MOTD_FILE" "$MOTD_FILE.bak"
-                show_success "MOTD disabled"
-            else
-                show_warning "MOTD is already disabled"
-            fi
+            [ -f "$MOTD_FILE" ] && mv "$MOTD_FILE" "$MOTD_FILE.bak" && show_success "MOTD disabled" || show_warning "MOTD already disabled"
             ;;
         2)
-            if [ -f "$MOTD_FILE.bak" ] && [ "$(readlink -f "$MOTD_FILE.bak")" != "$(readlink -f "$MOTD_FILE")" ]; then
-                mv "$MOTD_FILE.bak" "$MOTD_FILE"
-                show_success "Default MOTD restored"
-            else
-                show_error "Default MOTD backup not found"
-            fi
+            [ -f "$MOTD_FILE.bak" ] && mv "$MOTD_FILE.bak" "$MOTD_FILE" && show_success "Default MOTD restored" || show_error "Default MOTD backup not found"
             ;;
         3)
-            if [ -f "$MOTD_FILE" ] && [ ! -f "$MOTD_FILE.bak" ]; then
-                cp "$MOTD_FILE" "$MOTD_FILE.bak"
-            fi
+            [ -f "$MOTD_FILE" ] && [ ! -f "$MOTD_FILE.bak" ] && cp "$MOTD_FILE" "$MOTD_FILE.bak"
             show_prompt "Enter your custom MOTD (Ctrl+D when done):"
             cat > "$MOTD_FILE"
             show_success "Custom MOTD set"
             ;;
-        *)
-            show_error "Invalid option"
-            return
+        *)  show_error "Invalid option"
             ;;
     esac
 }
 
 change_default_directory() {
     clear
-    show_bordered_header "Default Directory Configuration"
+    make_banner "Default Directory Configuration"
     
     local current_dir=$(grep "^default-working-directory=" "$TERMUX_PROPERTIES" 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || echo "$HOME")
     
     show_info "Current default directory: ${COLOR[highlight]}$current_dir${COLOR[reset]}"
-    echo
     show_info "1. Set custom directory"
     show_info "2. Reset to home directory"
     
     show_prompt "Select option [1-2]:"
     read choice
     
-    case $choice in
-        1)
-            show_prompt "Enter new default directory path:"
-            read new_dir
-            
-            if [ -d "$new_dir" ]; then
-                update_property "$TERMUX_PROPERTIES" "default-working-directory" "$new_dir"
-                show_success "Default directory updated to: $new_dir"
-                show_warning "Restart Termux for changes to take effect"
-            else
-                show_error "Directory does not exist!"
-            fi
-            ;;
-        2)
-            sed -i '/^default-working-directory=/d' "$TERMUX_PROPERTIES"
-            show_success "Reset to home directory"
-            show_warning "Restart Termux for changes to take effect"
-            ;;
-        *)
-            show_error "Invalid option"
-            return
-            ;;
-    esac
+    if [[ $choice == "1" ]]; then
+        show_prompt "Enter new default directory path:"
+        read new_dir
+        
+        [[ -d "$new_dir" ]] && update_property "$TERMUX_PROPERTIES" "default-working-directory" "$new_dir" && \
+            show_success "Default directory updated to: $new_dir" || show_error "Directory does not exist!"
+    elif [[ $choice == "2" ]]; then
+        sed -i '/^default-working-directory=/d' "$TERMUX_PROPERTIES"
+        show_success "Reset to home directory"
+    else
+        show_error "Invalid option"
+        return
+    fi
+
+    [[ $choice =~ ^[12]$ ]] && show_warning "Restart Termux for changes to take effect"
 }
 
 configure_fullscreen() {
     clear
-    show_bordered_header "Fullscreen Configuration"
+    make_banner "Fullscreen Configuration"
     
     local current_fullscreen=$(grep "^fullscreen=" "$TERMUX_PROPERTIES" 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || echo "false")
     local current_workaround=$(grep "^use-fullscreen-workaround=" "$TERMUX_PROPERTIES" 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || echo "false")
@@ -598,7 +475,7 @@ configure_fullscreen() {
 
 show_about() {
     clear
-    show_bordered_header "About TermuXify"
+    make_banner "About TermuXify"
     
     echo -e "${LEFT_PADDING}${COLOR[text]}Version: ${COLOR[highlight]}${VERSION}${COLOR[reset]}"
     echo -e "${LEFT_PADDING}${COLOR[text]}Author:  ${COLOR[highlight]}${AUTHOR}${COLOR[reset]}"
@@ -614,7 +491,7 @@ main() {
     backup_properties
     
     while true; do
-        show_banner
+        banner
         
         current_theme=$(get_current_theme)
         current_font=$(get_current_font)
