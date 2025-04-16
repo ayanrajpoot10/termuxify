@@ -161,25 +161,34 @@ display_selectable_items() {
     local end=$((start + per_page))
     [[ $end -gt ${#items[@]} ]] && end=${#items[@]}
     
-    if [[ "default" == "${current%.*}" ]]; then
-        echo -e "${LEFT_PADDING}${COLOR[highlight]}[D] Default ${COLOR[success]}← USED${COLOR[reset]}"
-    else
-        echo -e "${LEFT_PADDING}${COLOR[text]}[D] Default${COLOR[reset]}"
-    fi
+    local max_width=1
+    for ((i = start; i < end; i++)); do
+        local num=$((i + 1))
+        local num_width=${#num}
+        [[ $num_width -gt $max_width ]] && max_width=$num_width
+    done
     
     for ((i = start; i < end; i++)); do
         local name=$(basename "${items[$i]%.*}")
         local num=$((i + 1))
+        local num_formatted=$(printf "[%${max_width}d]" $num)
         
         if [[ "$name" == "${current%.*}" ]]; then
-            echo -e "${LEFT_PADDING}${COLOR[highlight]}[$num] $name ${COLOR[success]}← USED${COLOR[reset]}"
+            echo -e "${LEFT_PADDING}${COLOR[highlight]}$num_formatted $name ${COLOR[success]}← USED${COLOR[reset]}"
         else
-            echo -e "${LEFT_PADDING}${COLOR[text]}[$num] $name${COLOR[reset]}"
+            echo -e "${LEFT_PADDING}${COLOR[text]}$num_formatted $name${COLOR[reset]}"
         fi
     done
 
     local total_pages=$(( (${#items[@]} + per_page - 1) / per_page ))
     echo -e "\n${LEFT_PADDING}${COLOR[muted]}Page $((page + 1))/$total_pages${COLOR[reset]}"
+    
+    if [[ "default" == "${current%.*}" ]]; then
+        echo -e "${LEFT_PADDING}${COLOR[highlight]}[D] Default${COLOR[reset]}"
+    else
+        echo -e "${LEFT_PADDING}${COLOR[secondary]}[D] Default${COLOR[reset]}"
+    fi
+    
     echo -e "${LEFT_PADDING}${COLOR[secondary]}[N] Next [P] Previous${COLOR[reset]}"
 }
 
@@ -193,53 +202,36 @@ handle_pagination_input() {
     esac
 }
 
-display_font_menu() {
-    local current_font="$1"
-    local installed_fonts=($FONTS_DIR/*)
-    
-    if [[ "default" == "${current_font%.*}" ]]; then
-        echo -e "${LEFT_PADDING}${COLOR[highlight]}[0] Default ${COLOR[success]}← USED${COLOR[reset]}"
-    else
-        echo -e "${LEFT_PADDING}${COLOR[text]}[0] Default${COLOR[reset]}"
-    fi
-    
-    for ((i = 0; i < ${#installed_fonts[@]}; i++)); do
-        local font=${installed_fonts[$i]}
-        local name=$(basename "${font%.*}")
-        local display_num=$((i + 1))
-        if [[ "$name" == "${current_font%.*}" ]]; then
-            echo -e "${LEFT_PADDING}${COLOR[highlight]}[$display_num] ${name} ${COLOR[success]}← USED${COLOR[reset]}"
-        else
-            echo -e "${LEFT_PADDING}${COLOR[text]}[$display_num] ${name}${COLOR[reset]}"
-        fi
-    done
-}
-
-configure_font_style() {
+change_font() {
     clear
     show_bordered_header "Font Configuration"
     
     local current_font=$(get_current_font)
+    local installed_fonts=($FONTS_DIR/*)
+    CURRENT_PAGE=0
     
     while true; do
         clear
         show_bordered_header "Font Configuration"
-        display_font_menu "$current_font"
+        display_selectable_items "$current_font" "${installed_fonts[@]}"
         
         show_prompt "Select option:"
         read choice
         
+        if ! handle_pagination_input ${#installed_fonts[@]}; then
+            continue
+        fi
+        
         case $choice in
-            0)
+            [Dd])
                 rm -f "$TERMUX_DIR/font.ttf"
                 echo "default" > "$CURRENT_FONT_FILE"
                 break
                 ;;
-            [1-9]*)
-                local installed_fonts=($FONTS_DIR/*)
-                local idx=$((choice - 1))
-                if [ "$idx" -lt "${#installed_fonts[@]}" ]; then
-                    local font=${installed_fonts[$idx]}
+            [0-9]*)
+                local actual_choice=$((choice - 1))
+                if [ "$actual_choice" -lt "${#installed_fonts[@]}" ]; then
+                    local font=${installed_fonts[$actual_choice]}
                     local font_file=$(find "$font" -type f -name "*.ttf" | head -n 1)
                     if [ -n "$font_file" ]; then
                         cp "$font_file" "$TERMUX_DIR/font.ttf"
@@ -522,7 +514,7 @@ configure_motd() {
     esac
 }
 
-configure_default_directory() {
+change_default_directory() {
     clear
     show_bordered_header "Default Directory Configuration"
     
@@ -651,11 +643,11 @@ main() {
         read choice
 
         case $choice in
-            1) configure_font_style ;;
+            1) change_font ;;
             2) change_colors ;;
             3) change_cursor ;;
             4) configure_motd ;;
-            5) configure_default_directory ;;
+            5) change_default_directory ;;
             6) configure_fullscreen ;;
             7) manage_aliases ;;
             8) show_about ;;
