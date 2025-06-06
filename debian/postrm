@@ -1,16 +1,8 @@
-#!/usr/bin/env bash
-
-set -e
+#!/bin/bash
 
 BIN="$PREFIX/bin"
 SHARE="$PREFIX/share/termuxify"
 
-if [ "$1" = "purge" ] || [ "$1" = "remove" ]; then
-    [ -d "$SHARE" ] && rm -rf "$SHARE"
-    [ -L "$BIN/termuxify" ] && rm -f "$BIN/termuxify"
-    [ -f "$BIN/termuxify.sh" ] && rm -f "$BIN/termuxify.sh"
-elif [[ "$1" != "upgrade" && "$1" != "failed-upgrade" && "$1" != "abort-install" && "$1" != "abort-upgrade" && "$1" != "disappear" ]]; then
-    echo "postrm called with unknown argument \`$1'" >&2
-fi
-
-exit 0
+rm -rf "$SHARE"
+rm -f "$BIN/termuxify"
+rm -f "$BIN/termuxify.sh"

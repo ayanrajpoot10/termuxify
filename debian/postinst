@@ -1,18 +1,9 @@
-#!/usr/bin/env bash
-
-set -e
+#!/bin/bash
 
 BIN="$PREFIX/bin"
 SCRIPT="$BIN/termuxify.sh"
 LINK="$BIN/termuxify"
 
 mkdir -p "$BIN"
-
-if [ "$1" = "configure" ] && [ -f "$SCRIPT" ]; then
-    chmod 755 "$SCRIPT"
-    ln -sf "$SCRIPT" "$LINK"
-else
-    [ "$1" != "configure" ] && echo "postinst called with unknown argument \`$1'" >&2
-fi
-
-exit 0
+chmod 755 "$SCRIPT"
+ln -sf "$SCRIPT" "$LINK"

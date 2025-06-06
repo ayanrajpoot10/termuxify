@@ -1,14 +1,6 @@
-#!/usr/bin/env bash
-
-set -e
+#!/bin/bash
 
 BIN="$PREFIX/bin"
 
-if [[ "$1" == "remove" || "$1" == "upgrade" || "$1" == "deconfigure" ]]; then
-    [ -L "$BIN/termuxify" ] && rm -f "$BIN/termuxify"
-    [ -f "$BIN/termuxify.sh" ] && rm -f "$BIN/termuxify.sh"
-elif [[ "$1" != "failed-upgrade" ]]; then
-    echo "prerm called with unknown argument \`$1'" >&2
-fi
-
-exit 0
+rm -f "$BIN/termuxify"
+rm -f "$BIN/termuxify.sh"
