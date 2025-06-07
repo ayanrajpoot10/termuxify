@@ -40,14 +40,14 @@ declare -A COLOR=(
     [highlight]="\033[38;5;147m"
 )
 
-readonly LEFT_PADDING="   "
+readonly PADDING="   "
 
 show_message() {
     local type=$1
     local msg=$2
     local color="${COLOR[$type]}"
     
-    echo -e "${LEFT_PADDING}${color}${msg}${COLOR[reset]}"
+    echo -e "${PADDING}${color}${msg}${COLOR[reset]}"
 }
 
 get_input() {
@@ -55,7 +55,7 @@ get_input() {
     local var_name=$2
     local color="${COLOR[prompt]}"
     
-    printf "${LEFT_PADDING}${color}${COLOR[bold]}${msg}${COLOR[reset]} "
+    printf "${PADDING}${color}${COLOR[bold]}${msg}${COLOR[reset]} "
     read "${var_name}"
 }
 
@@ -63,7 +63,7 @@ get_enter() {
     local msg=$1
     local color="${COLOR[prompt]}"
     
-    printf "${LEFT_PADDING}${color}${COLOR[bold]}${msg}${COLOR[reset]}"
+    printf "${PADDING}${color}${COLOR[bold]}${msg}${COLOR[reset]}"
     read
 }
 
@@ -73,18 +73,24 @@ show_error()   { show_message error "$1";   }
 show_info()    { show_message info "$1";    }
 show_header()  { show_message header "$1";  }
 
-trap 'handle_error $? $LINENO $BASH_LINENO "$BASH_COMMAND" "${FUNCNAME[*]:-main}"' ERR
+banner() {
+    clear
+    echo
+    printf "${PADDING}${COLOR[accent]}${COLOR[bold]}"
+    printf "╭────────────────────────────────────╮\n"
+    printf "${PADDING}│             TermuXify              │\n"
+    printf "${PADDING}╰────────────────────────────────────╯"
+    printf "${COLOR[reset]}\n"
+    printf "${PADDING}${COLOR[dim]} Terminal customization tool | v${VERSION}${COLOR[reset]}\n\n"
+}
 
-handle_error() {
-    local exit_code=$1
-    local line_no=$2
-    local bash_lineno=$3
-    local last_command=$4
-    local func_trace=$5
-    
-    show_error "Error (code: $exit_code) at line $line_no in function: $func_trace"
-    show_error "Command: $last_command"
-    exit $exit_code
+make_banner() {
+    local msg=$1
+    local width=35
+    local padding=$(( (width - ${#msg}) / 2 ))
+    echo -e "${PADDING}${COLOR[border]}╭$(printf '─%.0s' {1..35})╮"
+    echo -e "${PADDING}${COLOR[border]}│${COLOR[header]}$(printf "%*s%s%*s" $padding "" "$msg" $((width - padding - ${#msg})) "")${COLOR[border]}│"
+    echo -e "${PADDING}${COLOR[border]}╰$(printf '─%.0s' {1..35})╯${COLOR[reset]}"
 }
 
 backup_properties() {
@@ -94,26 +100,6 @@ backup_properties() {
             cp "${file}" "${file}.backup"
         fi
     done
-}
-
-banner() {
-    clear
-    echo
-    printf "${LEFT_PADDING}${COLOR[accent]}${COLOR[bold]}"
-    printf "╭────────────────────────────────────╮\n"
-    printf "${LEFT_PADDING}│             TermuXify              │\n"
-    printf "${LEFT_PADDING}╰────────────────────────────────────╯"
-    printf "${COLOR[reset]}\n"
-    printf "${LEFT_PADDING}${COLOR[dim]} Terminal customization tool | v${VERSION}${COLOR[reset]}\n\n"
-}
-
-make_banner() {
-    local msg=$1
-    local width=35
-    local padding=$(( (width - ${#msg}) / 2 ))
-    echo -e "${LEFT_PADDING}${COLOR[border]}╭$(printf '─%.0s' {1..35})╮"
-    echo -e "${LEFT_PADDING}${COLOR[border]}│${COLOR[header]}$(printf "%*s%s%*s" $padding "" "$msg" $((width - padding - ${#msg})) "")${COLOR[border]}│"
-    echo -e "${LEFT_PADDING}${COLOR[border]}╰$(printf '─%.0s' {1..35})╯${COLOR[reset]}"
 }
 
 update_property() {
@@ -176,19 +162,19 @@ display_selectable_items() {
         fi
         
         if [[ "${name}" == "${current}" ]]; then
-            echo -e "${LEFT_PADDING}${COLOR[highlight]}${formatted_num} ${name} ${COLOR[success]}← USED${COLOR[reset]}"
+            echo -e "${PADDING}${COLOR[highlight]}${formatted_num} ${name} ${COLOR[success]}← USED${COLOR[reset]}"
         else
-            echo -e "${LEFT_PADDING}${COLOR[text]}${formatted_num} ${name}${COLOR[reset]}"
+            echo -e "${PADDING}${COLOR[text]}${formatted_num} ${name}${COLOR[reset]}"
         fi
     done
 
-    echo -e "\n${LEFT_PADDING}${COLOR[muted]}Page $((page + 1))/$(( (${#items[@]} + per_page - 1) / per_page ))${COLOR[reset]}"
-    echo -e "${LEFT_PADDING}${COLOR[secondary]}[N] Next [P] Previous${COLOR[reset]}"
+    echo -e "\n${PADDING}${COLOR[muted]}Page $((page + 1))/$(( (${#items[@]} + per_page - 1) / per_page ))${COLOR[reset]}"
+    echo -e "${PADDING}${COLOR[secondary]}[N] Next [P] Previous${COLOR[reset]}"
     
     if [[ "default" == "${current}" ]]; then
-        echo -e "${LEFT_PADDING}${COLOR[highlight]}[D] Default ${COLOR[success]}← USED${COLOR[reset]}"
+        echo -e "${PADDING}${COLOR[highlight]}[D] Default ${COLOR[success]}← USED${COLOR[reset]}"
     else
-        echo -e "${LEFT_PADDING}${COLOR[secondary]}[D] Default${COLOR[reset]}"
+        echo -e "${PADDING}${COLOR[secondary]}[D] Default${COLOR[reset]}"
     fi
 }
 
@@ -256,7 +242,7 @@ change_colors() {
         clear
         make_banner "Color Theme Configuration"
         display_selectable_items "${current_theme}" "${schemes[@]}"
-        echo -e "${LEFT_PADDING}${COLOR[secondary]}[R] Random theme${COLOR[reset]}"
+        echo -e "${PADDING}${COLOR[secondary]}[R] Random theme${COLOR[reset]}"
         get_input "Select option:" choice
         
         if ! handle_pagination ${#schemes[@]}; then
@@ -300,12 +286,12 @@ change_cursor() {
     
     for i in "Block|block" "Underline|underline" "Bar|bar"; do
         IFS="|" read -r name style <<< "${i}"
-        echo -en "${LEFT_PADDING}${COLOR[text]}$((++count)). ${name}"
+        echo -en "${PADDING}${COLOR[text]}$((++count)). ${name}"
         [[ "${style}" == "${current_style}" ]] && echo -en " ${COLOR[success]}← USED"
         echo -e "${COLOR[reset]}"
     done
     
-    echo -en "${LEFT_PADDING}${COLOR[text]}4. Configure Blinking"
+    echo -en "${PADDING}${COLOR[text]}4. Configure Blinking"
     [[ ${current_blink} != "0" ]] && echo -en " ${COLOR[success]}← ENABLED (${current_blink}ms)"
     echo -e "${COLOR[reset]}"
     
@@ -392,7 +378,7 @@ configure_motd() {
     
     for opt in "1. Disable MOTD|disabled" "2. Enable default MOTD|default" "3. Set custom MOTD|custom"; do
         IFS="|" read -r text mode <<< "${opt}"
-        echo -en "${LEFT_PADDING}${COLOR[text]}${text}"
+        echo -en "${PADDING}${COLOR[text]}${text}"
         [[ "${mode}" == "${status}" ]] && echo -en " ${COLOR[success]}← USED"
         echo -e "${COLOR[reset]}"
     done
@@ -453,8 +439,8 @@ configure_fullscreen() {
     local current_workaround=$(grep "^use-fullscreen-workaround=" "${TERMUX_PROPERTIES}" 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || echo "false")
     
     show_info "Current settings:"
-    echo -e "${LEFT_PADDING}${COLOR[text]}Fullscreen: ${COLOR[highlight]}${current_fullscreen}${COLOR[reset]}"
-    echo -e "${LEFT_PADDING}${COLOR[text]}Workaround: ${COLOR[highlight]}${current_workaround}${COLOR[reset]}"
+    echo -e "${PADDING}${COLOR[text]}Fullscreen: ${COLOR[highlight]}${current_fullscreen}${COLOR[reset]}"
+    echo -e "${PADDING}${COLOR[text]}Workaround: ${COLOR[highlight]}${current_workaround}${COLOR[reset]}"
     echo
     show_info "1. Toggle fullscreen"
     show_info "2. Toggle fullscreen workaround"
@@ -491,9 +477,9 @@ show_about() {
     clear
     make_banner "About TermuXify"
     
-    echo -e "${LEFT_PADDING}${COLOR[text]}Version: ${COLOR[highlight]}${VERSION}${COLOR[reset]}"
-    echo -e "${LEFT_PADDING}${COLOR[text]}Author:  ${COLOR[highlight]}${AUTHOR}${COLOR[reset]}"
-    echo -e "${LEFT_PADDING}${COLOR[text]}GitHub:  ${COLOR[highlight]}${GITHUB}${COLOR[reset]}"
+    echo -e "${PADDING}${COLOR[text]}Version: ${COLOR[highlight]}${VERSION}${COLOR[reset]}"
+    echo -e "${PADDING}${COLOR[text]}Author:  ${COLOR[highlight]}${AUTHOR}${COLOR[reset]}"
+    echo -e "${PADDING}${COLOR[text]}GitHub:  ${COLOR[highlight]}${GITHUB}${COLOR[reset]}"
     echo
     show_info "Terminal customization tool for Termux"
 }
@@ -507,9 +493,9 @@ main() {
         current_theme=$(get_current_theme)
         current_font=$(get_current_font)
         
-        echo -e "${LEFT_PADDING}${COLOR[primary]}Current Configuration${COLOR[reset]}"
-        echo -e "${LEFT_PADDING}${COLOR[text]}Theme: ${COLOR[highlight]}${current_theme%.*}${COLOR[reset]}"
-        echo -e "${LEFT_PADDING}${COLOR[text]}Font:  ${COLOR[highlight]}${current_font%.*}${COLOR[reset]}\n"
+        echo -e "${PADDING}${COLOR[primary]}Current Configuration${COLOR[reset]}"
+        echo -e "${PADDING}${COLOR[text]}Theme: ${COLOR[highlight]}${current_theme%.*}${COLOR[reset]}"
+        echo -e "${PADDING}${COLOR[text]}Font:  ${COLOR[highlight]}${current_font%.*}${COLOR[reset]}\n"
 
         show_header "APPEARANCE"
         show_info "1. Font Style"
